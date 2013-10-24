@@ -1,0 +1,3 @@
+[submodule "lib/updater"]
+	path = lib/updater
+	url = git@git.gaarai.com:updater
