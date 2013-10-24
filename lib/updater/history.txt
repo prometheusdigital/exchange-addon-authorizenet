@@ -1,0 +1,6 @@
+1.0.0 - 2013-04-11 - Chris Jean
+	Release ready version.
+1.0.1 - 2013-05-01 - Chris Jean
+	Fixed a compatibility problem with the automatic-updater plugin.
+1.0.2 - 2013-06-21 - Chris Jean
+	Fixed an issue where requests would fail when made by servers with a non-default value for arg_separator.output in the php.ini file.
