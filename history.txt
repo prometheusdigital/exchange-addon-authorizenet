@@ -7,3 +7,5 @@
 	Enhancement: The updater and licensing system now handle iThemes server outages without causing long page delays or by reporting confusing error messages.
 1.0.2 - 2013-12-18 - Packaging Bot (lib/updater)
 	Bug Fix: Removed unneeded check on package-info.ithemes.com which was causing performance issues on some sites.
+1.0.3 - 2013-12-19 - Packaging Bot (lib/updater)
+	Bug Fix: Licensing will now be universal across all sites of a multisite network. This means that you will only need to license on one site to have the license apply across the entire network.
