@@ -71,17 +71,19 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 
 		define( 'AUTHORIZENET_API_LOGIN_ID'   , $settings['authorizenet-api-login-id'] );
 		define( 'AUTHORIZENET_TRANSACTION_KEY', $settings['authorizenet-transaction-key'] );
+		define( 'AUTHORIZENET_SANDBOX'        , (bool) $settings['authorizenet-test-mode'] );
 
 		$transaction = new AuthorizeNetAIM;
 
 		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', array(
-				'amount'        => $transaction_object->total,
-				'card_num'      => $cc_data['number'], //$_POST['x_card_num'],
-				'exp_date'      => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
-				'first_name'    => $cc_data['first-name'], //$_POST['x_first_name'],
-				'last_name'     => $cc_data['last-name'], //$_POST['x_last_name'],
-				'card_code'     => $cc_data['code'] //$_POST['x_card_code'],
-				//'currency_code' => $general_settings['default-currency']
+				'amount'     => $transaction_object->total,
+				'card_num'   => $cc_data['number'], //$_POST['x_card_num'],
+				'exp_date'   => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
+				'first_name' => $cc_data['first-name'], //$_POST['x_first_name'],
+				'last_name'  => $cc_data['last-name'], //$_POST['x_last_name'],
+				'zip'        => $transaction_object->billing_address['zip'], //$_POST['x_last_name'],
+				'card_code'  => $cc_data['code'] //$_POST['x_card_code'],
+				//'currency_e' => $general_settings['default-currency']
 		) );
 
 		$transaction->setFields( $fields );
@@ -126,12 +128,8 @@ function it_exchange_authorizenet_addon_make_payment_button( $options ) {
 		return;
 
 	// Use the ITExchange Purchase Dialog for CC fields
-	$authorizenet_settings  = it_exchange_get_option( 'addon_authorizenet' );
-	
-	$args = array(
-		'purchase-label' => $authorizenet_settings['authorizenet-purchase-button-label'],
-	);
-    return it_exchange_generate_purchase_dialog( 'authorizenet', $args );
+	if ( function_exists( 'it_exchange_generate_purchase_dialog' ) )
+		return it_exchange_generate_purchase_dialog( 'authorizenet' );
 }
 
 add_filter( 'it_exchange_get_authorizenet_make_payment_button', 'it_exchange_authorizenet_addon_make_payment_button', 10, 2 );

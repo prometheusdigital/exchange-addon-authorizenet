@@ -4,8 +4,8 @@
  * Version: 1.0.4
  * Description: Adds the ability for users to checkout with Authorize.Net.
  * Plugin URI: http://ithemes.com/exchange/authorize-net/
- * Author: Zao Web Design
- * Author URI: http://zao.is/
+ * Author: iThemes
+ * Author URI: http://ithemes.com
  * iThemes Package: exchange-addon-authorizenet
 
  * Installation:
