@@ -11,3 +11,6 @@
 	Bug Fix: Licensing will now be universal across all sites of a multisite network. This means that you will only need to license on one site to have the license apply across the entire network.
 1.0.4 - 2014-02-03 - Packaging Bot (lib/updater)
 	Bug Fix: Licensing on SSL-enabled sites now works properly.
+1.0.5 - 2014-11-14 - Packaging Bot (lib/updater)
+	Enhancement: Reduced caching to allow updates to appear more quickly.
+	Enhancement: Authenticating users now uses the new authentication system.
