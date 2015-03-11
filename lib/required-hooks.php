@@ -6,6 +6,10 @@
  * We've placed them all in one file to help add-on devs identify them more easily
 */
 
+//For verifying CC... 
+//incase a product doesn't have a shipping address and the shipping add-on is not enabled
+add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
+
 /**
  * Authorize.Net Endpoint URL to perform refunds
  *
@@ -75,7 +79,34 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 
 		$transaction = new AuthorizeNetAIM;
 
-		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', array(
+/*
+		$sale->first_name         = $first_name = "Jane";
+        $sale->last_name          = $last_name = "Smith";
+        $sale->company            = $company = "Jane Smith Enterprises Inc.";
+        $sale->address            = $address = "20 Main Street";
+        $sale->city               = $city = "San Francisco";
+        $sale->state              = $state = "CA";
+        $sale->zip                = $zip = "94110";
+        $sale->country            = $country = "US";
+        $sale->phone              = $phone = "415-555-5557";
+        $sale->fax                = $fax = "415-555-5556";
+        $sale->email              = $email = "foo@example.com";
+        $sale->cust_id            = $customer_id = "55";
+        $sale->customer_ip        = "98.5.5.5";
+        $sale->invoice_num        = $invoice_number = "123";
+        $sale->ship_to_first_name = $ship_to_first_name = "John";
+        $sale->ship_to_last_name  = $ship_to_last_name = "Smith";
+        $sale->ship_to_company    = $ship_to_company = "Smith Enterprises Inc.";
+        $sale->ship_to_address    = $ship_to_address = "10 Main Street";
+        $sale->ship_to_city       = $ship_to_city = "San Francisco";
+        $sale->ship_to_state      = $ship_to_state = "CA";
+        $sale->ship_to_zip        = $ship_to_zip_code = "94110";
+        $sale->ship_to_country    = $ship_to_country = "US";
+*/
+
+
+		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', 
+			array(
 				'amount'     => $transaction_object->total,
 				'card_num'   => $cc_data['number'], //$_POST['x_card_num'],
 				'exp_date'   => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
@@ -84,7 +115,8 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				'zip'        => $transaction_object->billing_address['zip'], //$_POST['x_last_name'],
 				'card_code'  => $cc_data['code'] //$_POST['x_card_code'],
 				//'currency_e' => $general_settings['default-currency']
-		) );
+			) 
+		);
 
 		$transaction->setFields( $fields );
 
