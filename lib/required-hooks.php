@@ -79,44 +79,31 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 
 		$transaction = new AuthorizeNetAIM;
 
-/*
-		$sale->first_name         = $first_name = "Jane";
-        $sale->last_name          = $last_name = "Smith";
-        $sale->company            = $company = "Jane Smith Enterprises Inc.";
-        $sale->address            = $address = "20 Main Street";
-        $sale->city               = $city = "San Francisco";
-        $sale->state              = $state = "CA";
-        $sale->zip                = $zip = "94110";
-        $sale->country            = $country = "US";
-        $sale->phone              = $phone = "415-555-5557";
-        $sale->fax                = $fax = "415-555-5556";
-        $sale->email              = $email = "foo@example.com";
-        $sale->cust_id            = $customer_id = "55";
-        $sale->customer_ip        = "98.5.5.5";
-        $sale->invoice_num        = $invoice_number = "123";
-        $sale->ship_to_first_name = $ship_to_first_name = "John";
-        $sale->ship_to_last_name  = $ship_to_last_name = "Smith";
-        $sale->ship_to_company    = $ship_to_company = "Smith Enterprises Inc.";
-        $sale->ship_to_address    = $ship_to_address = "10 Main Street";
-        $sale->ship_to_city       = $ship_to_city = "San Francisco";
-        $sale->ship_to_state      = $ship_to_state = "CA";
-        $sale->ship_to_zip        = $ship_to_zip_code = "94110";
-        $sale->ship_to_country    = $ship_to_country = "US";
-*/
-
-
-		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', 
-			array(
-				'amount'     => $transaction_object->total,
-				'card_num'   => $cc_data['number'], //$_POST['x_card_num'],
-				'exp_date'   => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
-				'first_name' => $cc_data['first-name'], //$_POST['x_first_name'],
-				'last_name'  => $cc_data['last-name'], //$_POST['x_last_name'],
-				'zip'        => $transaction_object->billing_address['zip'], //$_POST['x_last_name'],
-				'card_code'  => $cc_data['code'] //$_POST['x_card_code'],
-				//'currency_e' => $general_settings['default-currency']
-			) 
+		$it_exchange_authorizenet_transaction_fields = array(
+			'amount'     => $transaction_object->total,
+			'card_num'   => $cc_data['number'], //$_POST['x_card_num'],
+			'exp_date'   => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
+			'first_name' => $cc_data['first-name'], //$_POST['x_first_name'],
+			'last_name'  => $cc_data['last-name'], //$_POST['x_last_name'],
+			'address'    => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
+			'city'       => $transaction_object->billing_address['city'],
+			'state'      => $transaction_object->billing_address['state'],
+			'zip'        => $transaction_object->billing_address['zip'],
+			'country'    => $transaction_object->billing_address['country'],
+			'card_code'  => $cc_data['code'] //$_POST['x_card_code'],
+			//'currency_e' => $general_settings['default-currency']
 		);
+		
+		// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
+		if ( !empty( $transaction_object->shipping_address ) ) {
+			$it_exchange_authorizenet_transaction_fields['ship_to_address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );			
+			$it_exchange_authorizenet_transaction_fields['ship_to_city']    = $transaction_object->shipping_address['city'];			
+			$it_exchange_authorizenet_transaction_fields['ship_to_state']   = $transaction_object->shipping_address['state'];			
+			$it_exchange_authorizenet_transaction_fields['ship_to_zip']     = $transaction_object->shipping_address['zip'];			
+			$it_exchange_authorizenet_transaction_fields['ship_to_country'] = $transaction_object->shipping_address['country'];			
+		}
+		
+		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $it_exchange_authorizenet_transaction_fields );
 
 		$transaction->setFields( $fields );
 
@@ -127,7 +114,10 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 			it_exchange_flag_purchase_dialog_error( 'authorizenet' );
 			return false;
 		} else {
-			return it_exchange_add_transaction( 'authorizenet', $response->transaction_id, AuthorizeNetAIM_Response::APPROVED, it_exchange_get_current_customer_id(), $transaction_object );
+			$it_exchange_customer = it_exchange_get_current_customer();
+			error_log( it_exchange_get_current_customer_id() );
+			error_log( $it_exchange_customer->id );
+			return it_exchange_add_transaction( 'authorizenet', $response->transaction_id, AuthorizeNetAIM_Response::APPROVED, $it_exchange_customer->id, $transaction_object );
 		}
 
 	} else {
