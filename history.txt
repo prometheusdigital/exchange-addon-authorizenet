@@ -14,3 +14,6 @@
 1.0.5 - 2014-11-14 - Packaging Bot (lib/updater)
 	Enhancement: Reduced caching to allow updates to appear more quickly.
 	Enhancement: Authenticating users now uses the new authentication system.
+1.0.6 - 2015-03-16 - Lew Ayotte
+	Fixed bug caused when purchasing as a guest
+	Added more robust billing/shipping address information handling
