@@ -74,10 +74,13 @@ add_action( 'it_exchange_save_authorizenet_wizard_settings', 'it_exchange_save_a
 */
 function it_exchange_authorizenet_addon_default_settings( $values ) {
 	$defaults = array(
-		'authorizenet-test-mode'             => false,
-		'authorizenet-api-login-id'          => '',
-		'authorizenet-transaction-key'       => '',
-		'authorizenet-purchase-button-label' => __( 'Purchase', 'LION' ),
+		'authorizenet-test-mode'               => false,
+		'authorizenet-sandbox-mode'            => false,
+		'authorizenet-api-login-id'            => '',
+		'authorizenet-transaction-key'         => '',
+		'authorizenet-api-sandbox-login-id'    => '',
+		'authorizenet-sandbox-transaction-key' => '',
+		'authorizenet-purchase-button-label'   => __( 'Purchase', 'LION' ),
 	);
 	$values = ITUtility::merge_defaults( $values, $defaults );
 	return $values;
@@ -218,15 +221,11 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			?>
 			<h4><?php _e( 'Step 1. Fill out your Authorize.Net API Credentials', 'LION' ); ?></h4>
 			<p>
-				<label for="authorizenet-api-login-id"><?php _e( 'API Login ID', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your API Login ID can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key. Instructions can be found here.
-
-', 'LION' ); ?>">i</span></label>
+				<label for="authorizenet-api-login-id"><?php _e( 'API Login ID', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your API Login ID can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-api-login-id' ); ?>
 			</p>
 			<p>
-				<label for="authorizenet-live-transaction-key"><?php _e( 'Transaction Key', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Transaction Key can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key. Instructions can be found here.
-
-', 'LION' ); ?>">i</span></label>
+				<label for="authorizenet-live-transaction-key"><?php _e( 'Transaction Key', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Transaction Key can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-transaction-key' ); ?>
 			</p>
 			<h4><?php _e( 'Optional: Edit Purchase Button Label', 'LION' ); ?></h4>
@@ -235,10 +234,23 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<?php $form->add_text_box( 'authorizenet-purchase-button-label' ); ?>
 			</p>
 
-			<h4 class="hide-if-wizard"><?php _e( 'Optional: Enable Test Mode', 'LION' ); ?></h4>
+			<h4 class="hide-if-wizard"><?php _e( 'Optional:', 'LION' ); ?></h4>
 			<p class="hide-if-wizard">
 				<?php $form->add_check_box( 'authorizenet-test-mode', array( 'class' => 'show-test-mode-options' ) ); ?>
 				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
+			</p>
+			<h4 class="hide-if-wizard"><?php _e( 'Sandbox Mode:', 'LION' ); ?></h4>
+			<p class="hide-if-wizard">
+				<?php $form->add_check_box( 'authorizenet-sandbox-mode', array( 'class' => 'show-sandbox-mode-options' ) ); ?>
+				<label for="authorizenet-sandbox-mode"><?php _e( 'Enable Sandbox Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Sandbox credentials. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
+			</p>
+			<p>
+				<label for="authorizenet-sandbox-api-login-id"><?php _e( 'Sandbox API Login ID', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Sandbox API Login ID can be found under the Setting Menu on your Merchant Interface (on your Sandbox Authorize.net account).  Follow the instructions provided by Authorize.net to find your Sandbox API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
+				<?php $form->add_text_box( 'authorizenet-api-sandbox-login-id' ); ?>
+			</p>
+			<p>
+				<label for="authorizenet-sandbox-transaction-key"><?php _e( 'Sandbox Transaction Key', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Sandbox Transaction Key can be found under the Setting Menu on your Merchant Interface (on your Sandbox Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
+				<?php $form->add_text_box( 'authorizenet-sandbox-transaction-key' ); ?>
 			</p>
 		</div>
 		<?php
@@ -280,8 +292,11 @@ class IT_Exchange_AuthorizeNet_Add_On {
 		// Fields to save
 		$fields = array(
 			'authorizenet-test-mode',
+			'authorizenet-sandbox-mode',
 			'authorizenet-api-login-id',
 			'authorizenet-transaction-key',
+			'authorizenet-api-sandbox-login-id',
+			'authorizenet-sandbox-transaction-key',
 			'authorizenet-purchase-button-label'
 		);
 

@@ -36,6 +36,7 @@ add_filter( 'plugin_action_links_exchange-addon-authorizenet/exchange-addon-auth
 function it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_id ) {
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
 	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
+	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
 	return get_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $mode, true );
 }
@@ -52,6 +53,7 @@ function it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_
 function it_exchange_authorizenet_addon_set_authorizenet_customer_id( $customer_id, $auth_net_id ) {
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
 	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
+	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
 	return update_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $mode, $auth_net_id );
 }
@@ -117,6 +119,7 @@ function it_exchange_authorizenet_addon_add_refund_to_transaction( $auth_net_id,
 function it_exchange_authorizenet_addon_delete_authorizenet_id_from_customer( $auth_net_id ) {
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
 	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
+	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
 	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id );
 	foreach( $transactions as $transaction ) { //really only one
