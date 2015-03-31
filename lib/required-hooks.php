@@ -26,14 +26,14 @@ add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__retur
  * @param string $url transaction URL
 */
 function it_exchange_refund_url_for_authorizenet( $url ) {
-
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
-	$url      = $settings['authorizenet-test-mode'] ? AuthorizeNetAIM::LIVE_URL : AuthorizeNetAIM::SANDBOX_URL;
+	$url      = $settings['authorizenet-sandbox-mode'] ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
 
 	return $url;
 }
+//add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_for_authorizenet' );
+//HEREHEREHERE I Don't know what this is doing!?
 
-add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_for_authorizenet' );
 
 /**
  * This processes an Authorize.net transaction.
@@ -55,7 +55,6 @@ add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_f
  * @param object $transaction_object The transaction object
 */
 function it_exchange_authorizenet_addon_process_transaction( $status, $transaction_object ) {
-
 	// If this has been modified as true already, return.
 	if ( $status )
 		return $status;
@@ -70,59 +69,107 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	// Make sure we have the correct $_POST argument
 	if ( ! empty( $_POST[it_exchange_get_field_name('transaction_method')] ) && 'authorizenet' == $_POST[it_exchange_get_field_name('transaction_method')] ) {
 
-		$general_settings = it_exchange_get_option( 'settings_general' );
-		$settings         = it_exchange_get_option( 'addon_authorizenet' );
+		try {
+			$settings         = it_exchange_get_option( 'addon_authorizenet' );
+	
+			$api_url       = ( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+			$api_username  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-api-sandbox-login-id'] : $settings['authorizenet-api-login-id'];
+			$api_password  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+			$it_exchange_customer = it_exchange_get_current_customer();
+	
+			$transaction_fields = array(
+				'createTransactionRequest' => array(
+					'merchantAuthentication' => array(
+						'name'			     => $api_username,
+						'transactionKey'     => $api_password,
+					),
+					'transactionRequest' => array(
+						'transactionType'    => 'authCaptureTransaction',
+						'amount'             => $transaction_object->total,
+						'payment'        => array(
+							'creditCard'     => array(
+								'cardNumber'     => $cc_data['number'],
+								'expirationDate' => $cc_data['expiration-month'] . $cc_data['expiration-year'],
+								'cardCode'       => $cc_data['code'],
+							),
+						),
+						'order'          => array(
+							'description'    => it_exchange_get_cart_description(),
+						),
+						'customer'       => array(
+							'id'               => $it_exchange_customer->ID,	
+							'email'               => $it_exchange_customer->data->user_email,	
+						),
+						'billTo'         => array(
+							'firstName'        => $cc_data['first-name'],
+							'lastName'         => $cc_data['last-name'],
+							'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
+							'city'             => $transaction_object->billing_address['city'],
+							'state'            => $transaction_object->billing_address['state'],
+							'zip'              => $transaction_object->billing_address['zip'],
+							'country'          => $transaction_object->billing_address['country'],
+						),
+						'retail'          => array(
+							'marketType'       => 0, //ecommerce
+							'deviceType'       => 8, //Website
+						)
+					),
+				),
+			);
+					
+			$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields );
+			
+			$query = array(
+		        'headers' => array(
+		            'Content-Type' => 'application/json',
+				),
+	            'body' => json_encode( $transaction_fields ),
+			);
+	
+			$response = wp_remote_post( $api_url, $query );	
+			
+			echo '<pre>' . print_r( $response, true ) . '</pre>';
 
-		define( 'AUTHORIZENET_API_LOGIN_ID'   , $settings['authorizenet-api-login-id'] );
-		define( 'AUTHORIZENET_TRANSACTION_KEY', $settings['authorizenet-transaction-key'] );
-		define( 'AUTHORIZENET_SANDBOX'        , (bool) $settings['authorizenet-test-mode'] );
-
-		$transaction = new AuthorizeNetAIM;
-
-		$it_exchange_authorizenet_transaction_fields = array(
-			'amount'     => $transaction_object->total,
-			'card_num'   => $cc_data['number'], //$_POST['x_card_num'],
-			'exp_date'   => $cc_data['expiration-month'] . '/' . $cc_data['expiration-year'], //_POST['x_exp_date'],
-			'first_name' => $cc_data['first-name'], //$_POST['x_first_name'],
-			'last_name'  => $cc_data['last-name'], //$_POST['x_last_name'],
-			'address'    => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
-			'city'       => $transaction_object->billing_address['city'],
-			'state'      => $transaction_object->billing_address['state'],
-			'zip'        => $transaction_object->billing_address['zip'],
-			'country'    => $transaction_object->billing_address['country'],
-			'card_code'  => $cc_data['code'] //$_POST['x_card_code'],
-			//'currency_e' => $general_settings['default-currency']
-		);
-		
-		// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
-		if ( !empty( $transaction_object->shipping_address ) ) {
-			$it_exchange_authorizenet_transaction_fields['ship_to_address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );			
-			$it_exchange_authorizenet_transaction_fields['ship_to_city']    = $transaction_object->shipping_address['city'];			
-			$it_exchange_authorizenet_transaction_fields['ship_to_state']   = $transaction_object->shipping_address['state'];			
-			$it_exchange_authorizenet_transaction_fields['ship_to_zip']     = $transaction_object->shipping_address['zip'];			
-			$it_exchange_authorizenet_transaction_fields['ship_to_country'] = $transaction_object->shipping_address['country'];			
+			if ( !is_wp_error( $response ) ) {		
+				$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
+				$obj = json_decode( $body, true );
+				$transaction = $obj['transactionResponse'];
+				$transaction_id = $transaction['transId'];
+				
+				switch( $transaction['responseCode'] ) {
+					case '1': //Approved
+					case '4': //Held for Review
+						//Might want to store the account number - $transaction['accountNumber']
+						return it_exchange_add_transaction( 'authorizenet', $transaction_id, $transaction['responseCode'], $it_exchange_customer->id, $transaction_object );
+					case '2': //Declined
+					case '3': //Error
+						if ( !empty( $transaction['messages'] ) ) {
+							foreach( $transaction['messages'] as $message ) {
+								$exception[] = '<p>' . $message['description'] . '</p>';
+							}
+						}
+						if ( !empty( $transaction['errors'] ) ) {
+							foreach( $transaction['errors'] as $error ) {
+								$exception[] = '<p>' . $error['errorText'] . '</p>';
+							}
+						}
+						throw new Exception( implode( $exception ) );
+						break;
+				}
+				
+			} else {
+				throw new Exception( $response->get_error_message() );
+			}
 		}
-		
-		$fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $it_exchange_authorizenet_transaction_fields );
-
-		$transaction->setFields( $fields );
-
-		$response = $transaction->authorizeAndCapture();
-
-		if ( ! $response->approved ) {
-			it_exchange_add_message( 'error', $response->response_reason_text );
+		catch( Exception $e ) {
+			it_exchange_add_message( 'error', $e->getMessage() );
 			it_exchange_flag_purchase_dialog_error( 'authorizenet' );
 			return false;
-		} else {
-			$it_exchange_customer = it_exchange_get_current_customer();
-			error_log( it_exchange_get_current_customer_id() );
-			error_log( $it_exchange_customer->id );
-			return it_exchange_add_transaction( 'authorizenet', $response->transaction_id, AuthorizeNetAIM_Response::APPROVED, $it_exchange_customer->id, $transaction_object );
 		}
 
 	} else {
-		it_exchange_flag_purchase_dialog_error( 'authorizenet' );
 		it_exchange_add_message( 'error', __( 'Unknown error. Please try again later.', 'LION' ) );
+		it_exchange_flag_purchase_dialog_error( 'authorizenet' );
 	}
 	return false;
 
@@ -207,14 +254,14 @@ add_filter( 'it_exchange_get_authorizenet_make_payment_button', 'it_exchange_aut
 */
 function it_exchange_authorizenet_addon_transaction_status_label( $status ) {
 	switch ( $status ) {
-		case AuthorizeNetAIM_Response::APPROVED :
+		case '1' :
 			return __( 'Paid', 'LION' );
-		case AuthorizeNetAIM_Response::DECLINED :
+		case '2' :
 			return __( 'Declined', 'LION' );
-		case AuthorizeNetAIM_Response::ERROR    :
+		case '3' :
 			return __( 'Error', 'LION' );
-		case AuthorizeNetAIM_Response::HELD     :
-			return __( 'Held: The transasction funds are currently held or under review.', 'LION' );
+		case '4' :
+			return __( 'Held: The transaction funds are currently held or under review.', 'LION' );
 		default:
 			return __( 'Unknown', 'LION' );
 	}
@@ -237,7 +284,7 @@ add_filter( 'it_exchange_transaction_status_label_authorizenet', 'it_exchange_au
  * @return boolean
 */
 function it_exchange_authorizenet_transaction_is_cleared_for_delivery( $cleared, $transaction ) {
-	$valid_stati = array( AuthorizeNetAIM_Response::APPROVED );
+	$valid_stati = array( 1 );
 	return in_array( it_exchange_get_transaction_status( $transaction ), $valid_stati );
 }
 add_filter( 'it_exchange_authorizenet_transaction_is_cleared_for_delivery', 'it_exchange_authorizenet_transaction_is_cleared_for_delivery', 10, 2 );

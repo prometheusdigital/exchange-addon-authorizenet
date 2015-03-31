@@ -5,9 +5,13 @@
  * @since 1.0.0
 */
 
-// Include the Authorize.Net API library
-if ( ! class_exists( 'AuthorizeNetRequest' ) )
-	require_once('lib/anet_php_sdk/AuthorizeNet.php' );
+// developer accounts: https://test.authorize.net/gateway/transact.dll
+// for real accounts (even in test mode), please make sure that you are
+// posting to: https://secure.authorize.net/gateway/transact.dll
+if ( !defined( 'AUTHORIZE_NET_AIM_API_LIVE_URL' ) )
+	define( 'AUTHORIZE_NET_AIM_API_LIVE_URL', 'https://api.authorize.net/xml/v1/request.api' );
+if ( !defined( 'AUTHORIZE_NET_AIM_API_SANDBOX_URL' ) )
+	define( 'AUTHORIZE_NET_AIM_API_SANDBOX_URL', 'https://apitest.authorize.net/xml/v1/request.api' );
 
 /**
  * Exchange Transaction Add-ons require several hooks in order to work properly.
