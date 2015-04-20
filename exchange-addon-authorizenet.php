@@ -27,8 +27,8 @@
 */
 function it_exchange_register_authorizenet_addon() {
 	$options = array(
-		'name'              => __( 'Authorize.Net', 'it-l10n-exchange-addon-authorize-net' ),
-		'description'       => __( 'Process transactions via Authorize.Net, a robust and powerful payment gateway.', 'it-l10n-exchange-addon-authorize-net' ),
+		'name'              => __( 'Authorize.Net', 'LION' ),
+		'description'       => __( 'Process transactions via Authorize.Net, a robust and powerful payment gateway.', 'LION' ),
 		'author'            => 'iThemes',
 		'author_url'        => 'http://ithemes.com/exchange/authorize_net/',
 		'icon'              => ITUtility::get_url_from_file( dirname( __FILE__ ) . '/lib/images/authorize-net.png' ),
@@ -52,7 +52,6 @@ add_action( 'it_exchange_register_addons', 'it_exchange_register_authorizenet_ad
 function it_exchange_authorizenet_set_textdomain() {
 	load_plugin_textdomain( 'it-l10n-exchange-authorize_net', false, dirname( plugin_basename( __FILE__  ) ) . '/lang/' );
 }
-
 add_action( 'plugins_loaded', 'it_exchange_authorizenet_set_textdomain' );
 
 /**

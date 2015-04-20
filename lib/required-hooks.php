@@ -34,6 +34,55 @@ function it_exchange_refund_url_for_authorizenet( $url ) {
 //add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_for_authorizenet' );
 //HEREHEREHERE I Don't know what this is doing!?
 
+/**
+ * Enqueues admin scripts on Settings page
+ *
+ * @since 1.1.24
+ *
+ * @return void
+*/
+function it_exchange_authorizenet_addon_admin_enqueue_script( $hook ) {
+	if ( 'exchange_page_it-exchange-addons' === $hook 
+		&& !empty( $_REQUEST['add-on-settings'] ) && 'authorizenet' === $_REQUEST['add-on-settings'] ) {
+	    wp_enqueue_script( 'authorizenet-addon-settings-js', ITUtility::get_url_from_file( dirname( __FILE__ ) ) . '/js/settings.js' );
+	    wp_enqueue_style( 'authorizenet-addon-settings-css', ITUtility::get_url_from_file( dirname( __FILE__ ) ) . '/css/settings.css' );
+	}
+}
+add_action( 'admin_enqueue_scripts', 'it_exchange_authorizenet_addon_admin_enqueue_script' );
+
+/**
+ * Loads minimal front-end styling
+ *
+ * @uses wp_enqueue_style()
+ * @since 1.0.0
+ * @return void
+*/
+function it_exchange_authorizenet_addon_wp_enqueue_script() {
+	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' ) ) {
+		wp_enqueue_style( 'it_exchange_authorize', plugins_url( 'css/authorize.css', __FILE__ ) );
+	}
+}
+add_action( 'wp_enqueue_scripts', 'it_exchange_authorizenet_addon_wp_enqueue_script' );
+
+/**
+ * Adds actions to the plugins page for the iThemes Exchange Authorize.Net plugin
+ *
+ * @since 1.0.0
+ *
+ * @param array $meta Existing meta
+ * @param string $plugin_file the wp plugin slug (path)
+ * @param array $plugin_data the data WP harvested from the plugin header
+ * @param string $context
+ * @return array
+*/
+function it_exchange_authorizenet_plugin_row_actions( $actions, $plugin_file, $plugin_data, $context ) {
+
+	$actions['setup_addon'] = '<a href="' . esc_url( admin_url( 'admin.php?page=it-exchange-addons&add-on-settings=authorizenet' ) ) . '">' . __( 'Setup Add-on', 'LION' ) . '</a>';
+
+	return $actions;
+
+}
+add_filter( 'plugin_action_links_exchange-addon-authorizenet/exchange-addon-authorizenet.php', 'it_exchange_authorizenet_plugin_row_actions', 10, 4 );
 
 /**
  * This processes an Authorize.net transaction.
@@ -68,7 +117,6 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 
 	// Make sure we have the correct $_POST argument
 	if ( ! empty( $_POST[it_exchange_get_field_name('transaction_method')] ) && 'authorizenet' == $_POST[it_exchange_get_field_name('transaction_method')] ) {
-
 		try {
 			$settings         = it_exchange_get_option( 'addon_authorizenet' );
 	
@@ -76,46 +124,268 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 			$api_username  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-api-sandbox-login-id'] : $settings['authorizenet-api-login-id'];
 			$api_password  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 			$it_exchange_customer = it_exchange_get_current_customer();
+			
+			$subscription = false;
+			$it_exchange_customer = it_exchange_get_current_customer();
+			$reference_id = substr( it_exchange_create_unique_hash(), 20 );
 	
-			$transaction_fields = array(
-				'createTransactionRequest' => array(
-					'merchantAuthentication' => array(
-						'name'			     => $api_username,
-						'transactionKey'     => $api_password,
-					),
-					'transactionRequest' => array(
-						'transactionType'    => 'authCaptureTransaction',
-						'amount'             => $transaction_object->total,
-						'payment'        => array(
-							'creditCard'     => array(
-								'cardNumber'     => $cc_data['number'],
-								'expirationDate' => $cc_data['expiration-month'] . $cc_data['expiration-year'],
-								'cardCode'       => $cc_data['code'],
+			remove_filter( 'the_title', 'wptexturize' ); // remove this because it screws up the product titles in PayPal
+			$cart = it_exchange_get_cart_products();
+			if ( 1 === absint( count( $cart ) ) ) {
+				foreach( $cart as $product ) {
+					if ( it_exchange_product_supports_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'auto-renew' ) ) ) {
+						if ( it_exchange_product_has_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'auto-renew' ) ) ) {
+							$trial_enabled = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'trial-enabled' ) );
+							$trial_interval = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'trial-interval' ) );
+							$trial_interval_count = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'trial-interval-count' ) );
+							$auto_renew = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'auto-renew' ) );
+							$interval = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'interval' ) );
+							$interval_count = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'interval-count' ) );
+		
+							switch( $interval ) {
+								case 'year':
+									$duration = 12; //The max you can do in Authorize.Net is 12 months (1 year)
+									$unit = 'months'; //lame
+									break;
+								case 'week':
+									$duration = $interval_count * 7;
+									$unit = 'days'; //lame
+									break;
+								case 'day':
+									$duration = $interval_count;
+									$unit = 'days';
+									break;
+								case 'month':
+								default:
+									$duration = $interval_count;
+									$unit = 'months';
+									break;
+							}
+							$duration = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_duration', $duration, $product );
+					
+							$trial_unit = NULL;
+							$trial_duration = 0;
+							if ( $trial_enabled ) {
+								$allow_trial = true;
+								//Should we all trials?
+								if ( 'membership-product-type' === it_exchange_get_product_type( $product['product_id'] ) ) {
+									if ( is_user_logged_in() ) {
+										if ( function_exists( 'it_exchange_get_session_data' ) ) {
+											$member_access = it_exchange_get_session_data( 'member_access' );
+											$children = (array)it_exchange_membership_addon_get_all_the_children( $product['product_id'] );
+											$parents = (array)it_exchange_membership_addon_get_all_the_parents( $product['product_id'] );
+											foreach( $member_access as $prod_id => $txn_id ) {
+												if ( $prod_id === $product['product_id'] || in_array( $prod_id, $children ) || in_array( $prod_id, $parents ) ) {
+													$allow_trial = false;
+													break;
+												}								
+											}
+										}
+									}
+								}
+						
+								$allow_trial = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_allow_trial', $allow_trial, $product['product_id'] );
+								if ( $allow_trial && 0 < $trial_interval_count ) {
+									switch ( $trial_interval ) {
+										case 'year':
+											$trial_duration = 12; //The max you can do in Authorize.Net is 12 months (1 year)
+											//$trial_unit = 'months'; //lame
+											break;
+										case 'week':
+											$trial_duration = $interval_count * 7;
+											//$trial_unit = 'days'; //lame
+											break;
+										case 'day':
+										case 'month':
+										default:
+											$trial_duration = $interval_count;
+											break;
+									}
+									$trial_duration = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_trial_duration', $trial_duration, $product );
+								}
+							}
+							
+							$subscription = true;
+							$product_id = $product['product_id'];
+						}
+					}
+				}
+			}
+			
+			if ( $subscription ) {
+				$upgrade_downgrade = it_exchange_get_session_data( 'updowngrade_details' );
+				if ( !empty( $upgrade_downgrade ) ) {
+					foreach( $cart as $product ) {
+						if ( !empty( $upgrade_downgrade[$product['product_id']] ) ) {
+							$product_id = $product['product_id'];
+							if (   !empty( $upgrade_downgrade[$product_id]['old_transaction_id'] ) 
+								&& !empty( $upgrade_downgrade[$product_id]['old_transaction_method'] ) ) {
+								$transaction_fields = array(
+									'ARBUpdateSubscriptionRequest' => array(
+										'merchantAuthentication' => array(
+											'name'			     => $api_username,
+											'transactionKey'     => $api_password,
+										),
+										'refId' => $reference_id,
+										'subscriptionId' => $upgrade_downgrade[$product_id]['old_transaction_id'],
+										'subscription' => array(
+											'name' => it_exchange_get_cart_description(),
+											'paymentSchedule' => array(
+												'interval' => array(
+													'length'   => $duration,
+													'unit'     => $unit,
+												),
+												'startDate'        => date_i18n( 'Y-m-d' ),
+												'totalOccurrences' => 9999, // To submit a subscription with no end date (an ongoing subscription), this field must be submitted with a value of “9999.”
+												'trialOccurrences' => $trial_duration, //optional
+											),
+											'amount'      => $transaction_object->total,
+											'trialAmount' => 0.00,
+											'payment'        => array(
+												'creditCard'     => array(
+													'cardNumber'     => $cc_data['number'],
+													'expirationDate' => $cc_data['expiration-month'] . $cc_data['expiration-year'],
+													'cardCode'       => $cc_data['code'],
+												),
+											),
+											'order'          => array(
+												'description'    => it_exchange_get_cart_description(),
+											),
+											'customer'       => array(
+												'id'               => $it_exchange_customer->ID,	
+												'email'            => $it_exchange_customer->data->user_email,	
+											),
+											'billTo'         => array(
+												'firstName'        => $cc_data['first-name'],
+												'lastName'         => $cc_data['last-name'],
+												'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
+												'city'             => $transaction_object->billing_address['city'],
+												'state'            => $transaction_object->billing_address['state'],
+												'zip'              => $transaction_object->billing_address['zip'],
+												'country'          => $transaction_object->billing_address['country'],
+											),
+										),
+									),
+								);
+							}
+						}
+					}
+					
+					// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
+					if ( !empty( $transaction_object->shipping_address ) ) {
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+					}
+				} else {
+					$transaction_fields = array(
+						'ARBCreateSubscriptionRequest' => array(
+							'merchantAuthentication' => array(
+								'name'			     => $api_username,
+								'transactionKey'     => $api_password,
+							),
+							'refId' => $reference_id,
+							'subscription' => array(
+								'name' => it_exchange_get_cart_description(),
+								'paymentSchedule' => array(
+									'interval' => array(
+										'length'   => $duration,
+										'unit'     => $unit,
+									),
+									'startDate'        => date_i18n( 'Y-m-d' ),
+									'totalOccurrences' => 9999, // To submit a subscription with no end date (an ongoing subscription), this field must be submitted with a value of “9999.”
+									'trialOccurrences' => $trial_duration, //optional
+								),
+								'amount'      => $transaction_object->total,
+								'trialAmount' => 0.00,
+								'payment'        => array(
+									'creditCard'     => array(
+										'cardNumber'     => $cc_data['number'],
+										'expirationDate' => $cc_data['expiration-month'] . $cc_data['expiration-year'],
+										'cardCode'       => $cc_data['code'],
+									),
+								),
+								'order'          => array(
+									'description'    => it_exchange_get_cart_description(),
+								),
+								'customer'       => array(
+									'id'               => $it_exchange_customer->ID,	
+									'email'            => $it_exchange_customer->data->user_email,	
+								),
+								'billTo'         => array(
+									'firstName'        => $cc_data['first-name'],
+									'lastName'         => $cc_data['last-name'],
+									'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
+									'city'             => $transaction_object->billing_address['city'],
+									'state'            => $transaction_object->billing_address['state'],
+									'zip'              => $transaction_object->billing_address['zip'],
+									'country'          => $transaction_object->billing_address['country'],
+								),
 							),
 						),
-						'order'          => array(
-							'description'    => it_exchange_get_cart_description(),
+					);
+					
+					// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
+					if ( !empty( $transaction_object->shipping_address ) ) {
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+					}
+				}
+			} else {
+				$transaction_fields = array(
+					'createTransactionRequest' => array(
+						'merchantAuthentication' => array(
+							'name'			     => $api_username,
+							'transactionKey'     => $api_password,
 						),
-						'customer'       => array(
-							'id'               => $it_exchange_customer->ID,	
-							'email'               => $it_exchange_customer->data->user_email,	
+						'refId' => $reference_id,
+						'transactionRequest' => array(
+							'transactionType'    => 'authCaptureTransaction',
+							'amount'             => $transaction_object->total,
+							'payment'        => array(
+								'creditCard'     => array(
+									'cardNumber'     => $cc_data['number'],
+									'expirationDate' => $cc_data['expiration-month'] . $cc_data['expiration-year'],
+									'cardCode'       => $cc_data['code'],
+								),
+							),
+							'order'          => array(
+								'description'    => it_exchange_get_cart_description(),
+							),
+							'customer'       => array(
+								'id'               => $it_exchange_customer->ID,	
+								'email'               => $it_exchange_customer->data->user_email,	
+							),
+							'billTo'         => array(
+								'firstName'        => $cc_data['first-name'],
+								'lastName'         => $cc_data['last-name'],
+								'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
+								'city'             => $transaction_object->billing_address['city'],
+								'state'            => $transaction_object->billing_address['state'],
+								'zip'              => $transaction_object->billing_address['zip'],
+								'country'          => $transaction_object->billing_address['country'],
+							),
+							'retail'          => array(
+								'marketType'       => 0, //ecommerce
+								'deviceType'       => 8, //Website
+							)
 						),
-						'billTo'         => array(
-							'firstName'        => $cc_data['first-name'],
-							'lastName'         => $cc_data['last-name'],
-							'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
-							'city'             => $transaction_object->billing_address['city'],
-							'state'            => $transaction_object->billing_address['state'],
-							'zip'              => $transaction_object->billing_address['zip'],
-							'country'          => $transaction_object->billing_address['country'],
-						),
-						'retail'          => array(
-							'marketType'       => 0, //ecommerce
-							'deviceType'       => 8, //Website
-						)
 					),
-				),
-			);
+				);
+				// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
+				if ( !empty( $transaction_object->shipping_address ) ) {
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+				}
+			}
 					
 			$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields );
 			
@@ -128,35 +398,47 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	
 			$response = wp_remote_post( $api_url, $query );	
 			
-			echo '<pre>' . print_r( $response, true ) . '</pre>';
-
 			if ( !is_wp_error( $response ) ) {		
 				$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
 				$obj = json_decode( $body, true );
-				$transaction = $obj['transactionResponse'];
-				$transaction_id = $transaction['transId'];
-				
-				switch( $transaction['responseCode'] ) {
-					case '1': //Approved
-					case '4': //Held for Review
-						//Might want to store the account number - $transaction['accountNumber']
-						return it_exchange_add_transaction( 'authorizenet', $transaction_id, $transaction['responseCode'], $it_exchange_customer->id, $transaction_object );
-					case '2': //Declined
-					case '3': //Error
+				if ( $subscription ) {
+					if ( !empty( $obj['subscriptionId'] ) ) {
+						$txn_id = it_exchange_add_transaction( 'authorizenet', $reference_id, 1, $it_exchange_customer->id, $transaction_object );
+						it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $obj['subscriptionId'] );
+						return $txn_id;
+					} else {
 						if ( !empty( $transaction['messages'] ) ) {
 							foreach( $transaction['messages'] as $message ) {
-								$exception[] = '<p>' . $message['description'] . '</p>';
-							}
-						}
-						if ( !empty( $transaction['errors'] ) ) {
-							foreach( $transaction['errors'] as $error ) {
-								$exception[] = '<p>' . $error['errorText'] . '</p>';
+								$exception[] = '<p>' . $message['text'] . '</p>';
 							}
 						}
 						throw new Exception( implode( $exception ) );
-						break;
+					}
+				} else {
+					$transaction = $obj['transactionResponse'];
+					$transaction_id = $transaction['transId'];
+					
+					switch( $transaction['responseCode'] ) {
+						case '1': //Approved
+						case '4': //Held for Review
+							//Might want to store the account number - $transaction['accountNumber']
+							return it_exchange_add_transaction( 'authorizenet', $transaction_id, $transaction['responseCode'], $it_exchange_customer->id, $transaction_object );
+						case '2': //Declined
+						case '3': //Error
+							if ( !empty( $transaction['messages'] ) ) {
+								foreach( $transaction['messages'] as $message ) {
+									$exception[] = '<p>' . $message['description'] . '</p>';
+								}
+							}
+							if ( !empty( $transaction['errors'] ) ) {
+								foreach( $transaction['errors'] as $error ) {
+									$exception[] = '<p>' . $error['errorText'] . '</p>';
+								}
+							}
+							throw new Exception( implode( $exception ) );
+							break;
+					}
 				}
-				
 			} else {
 				throw new Exception( $response->get_error_message() );
 			}
@@ -191,14 +473,14 @@ add_action( 'it_exchange_do_transaction_authorizenet', 'it_exchange_authorizenet
  * @return string HTML button
 */
 function it_exchange_authorizenet_addon_make_payment_button( $options ) {
-
 	// Make sure we have items in the cart
-	if ( 0 >= it_exchange_get_cart_total( false ) )
+	if ( 0 >= it_exchange_get_cart_total( false ) ) {
 		return;
-
+	}
 	// Use the ITExchange Purchase Dialog for CC fields
-	if ( function_exists( 'it_exchange_generate_purchase_dialog' ) )
+	if ( function_exists( 'it_exchange_generate_purchase_dialog' ) ) {
 		return it_exchange_generate_purchase_dialog( 'authorizenet' );
+	}
 }
 
 add_filter( 'it_exchange_get_authorizenet_make_payment_button', 'it_exchange_authorizenet_addon_make_payment_button', 10, 2 );

@@ -74,12 +74,14 @@ add_action( 'it_exchange_save_authorizenet_wizard_settings', 'it_exchange_save_a
 */
 function it_exchange_authorizenet_addon_default_settings( $values ) {
 	$defaults = array(
-		'authorizenet-test-mode'               => false,
-		'authorizenet-sandbox-mode'            => false,
 		'authorizenet-api-login-id'            => '',
 		'authorizenet-transaction-key'         => '',
-		'authorizenet-api-sandbox-login-id'    => '',
+		'authorizenet-md5-hash'                => '',
+		'authorizenet-test-mode'               => false,
+		'authorizenet-sandbox-mode'            => false,
+		'authorizenet-sandbox-api-login-id'    => '',
 		'authorizenet-sandbox-transaction-key' => '',
+		'authorizenet-sandbox-md5-hash'        => '',
 		'authorizenet-purchase-button-label'   => __( 'Purchase', 'LION' ),
 	);
 	$values = ITUtility::merge_defaults( $values, $defaults );
@@ -217,7 +219,7 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			</p>
 			<?php
 				if ( ! in_array( $general_settings['default-currency'], array_keys( $this->get_supported_currency_options() ) ) )
-					echo '<h4>' . sprintf( __( 'You are currently using a currency that is not supported by Authorize.net. <a href="%s">Please update your currency settings</a>.', 'LION' ), add_query_arg( 'page', 'it-exchange-settings' ) ) . '</h4>';
+					echo '<h4>' . sprintf( __( 'You are currently using a currency that is not supported by Authorize.net. <a href="%s">Please update your currency settings</a>.', 'LION' ), esc_url( add_query_arg( 'page', 'it-exchange-settings' ) ) ) . '</h4>';
 			?>
 			<h4><?php _e( 'Step 1. Fill out your Authorize.Net API Credentials', 'LION' ); ?></h4>
 			<p>
@@ -228,6 +230,16 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<label for="authorizenet-live-transaction-key"><?php _e( 'Transaction Key', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Transaction Key can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-transaction-key' ); ?>
 			</p>
+			<p>
+				<label for="authorizenet-md5-hash"><?php _e( 'MD5 Hash Value', 'LION' ); ?> <span class="tip" title="<?php _e( 'The MD5 Hash Value should match the value you set in your Authorize.Net account at Account -> MD5-Hash. It can be up to 20 characters long, including upper- and lower-case letters, numbers, spaces, and punctuation. More complex values will be more secure.', 'LION' ); ?>">i</span></label>
+				<?php $form->add_text_box( 'authorizenet-md5-hash' ); ?>
+			</p>
+			
+            <h4><?php _e( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ); ?></h4>
+            <p><?php _e( 'The Silent Post URL can be configured in the Account section of the Authorize.Net dashboard. Click "Silent Post URL" to reveal a form to add a new URL for receiving a Silent Post.', 'LION' ); ?></p>
+            <p><?php _e( 'Please log in to your account and add this URL to your Silent Post URL so iThemes Exchange is notified of things like refunds, payments, etc.', 'LION' ); ?></p>
+            <code><?php echo get_site_url(); ?>/?<?php esc_attr_e( it_exchange_get_webhook( 'authorizenet' ) ); ?>=1</code>
+            
 			<h4><?php _e( 'Optional: Edit Purchase Button Label', 'LION' ); ?></h4>
 			<p>
 				<label for="authorizenet-purchase-button-label"><?php _e( 'Purchase Button Label', 'LION' ); ?> <span class="tip" title="<?php _e( 'This is the text inside the button your customers will press to purchase with Authorize.net', 'LION' ); ?>">i</span></label>
@@ -237,20 +249,26 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			<h4 class="hide-if-wizard"><?php _e( 'Optional:', 'LION' ); ?></h4>
 			<p class="hide-if-wizard">
 				<?php $form->add_check_box( 'authorizenet-test-mode', array( 'class' => 'show-test-mode-options' ) ); ?>
-				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
+				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Live credentials. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
 			</p>
+			
 			<h4 class="hide-if-wizard"><?php _e( 'Sandbox Mode:', 'LION' ); ?></h4>
 			<p class="hide-if-wizard">
 				<?php $form->add_check_box( 'authorizenet-sandbox-mode', array( 'class' => 'show-sandbox-mode-options' ) ); ?>
 				<label for="authorizenet-sandbox-mode"><?php _e( 'Enable Sandbox Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Sandbox credentials. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
 			</p>
-			<p>
+            <?php $hidden_class = ( $settings['authorizenet-sandbox-mode'] ) ? '' : 'hide-if-live-mode'; ?>
+			<p class="sandbox-mode-options hide-if-wizard <?php echo $hidden_class; ?>">
 				<label for="authorizenet-sandbox-api-login-id"><?php _e( 'Sandbox API Login ID', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Sandbox API Login ID can be found under the Setting Menu on your Merchant Interface (on your Sandbox Authorize.net account).  Follow the instructions provided by Authorize.net to find your Sandbox API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
-				<?php $form->add_text_box( 'authorizenet-api-sandbox-login-id' ); ?>
+				<?php $form->add_text_box( 'authorizenet-sandbox-api-login-id' ); ?>
 			</p>
-			<p>
+			<p class="sandbox-mode-options hide-if-wizard <?php echo $hidden_class; ?>">
 				<label for="authorizenet-sandbox-transaction-key"><?php _e( 'Sandbox Transaction Key', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your Sandbox Transaction Key can be found under the Setting Menu on your Merchant Interface (on your Sandbox Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-sandbox-transaction-key' ); ?>
+			</p>
+			<p class="sandbox-mode-options hide-if-wizard <?php echo $hidden_class; ?>">
+				<label for="authorizenet-sandbox-md5-hash"><?php _e( 'Sandbox MD5 Hash Value', 'LION' ); ?> <span class="tip" title="<?php _e( 'The MD5 Hash Value should match the value you set in your Authorize.Net account at Account -> MD5-Hash. It can be up to 20 characters long, including upper- and lower-case letters, numbers, spaces, and punctuation. More complex values will be more secure.', 'LION' ); ?>">i</span></label>
+				<?php $form->add_text_box( 'authorizenet-sandbox-md5-hash' ); ?>
 			</p>
 		</div>
 		<?php
@@ -295,9 +313,11 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			'authorizenet-sandbox-mode',
 			'authorizenet-api-login-id',
 			'authorizenet-transaction-key',
-			'authorizenet-api-sandbox-login-id',
+			'authorizenet-md5-hash',
+			'authorizenet-purchase-button-label',
+			'authorizenet-sandbox-api-login-id',
 			'authorizenet-sandbox-transaction-key',
-			'authorizenet-purchase-button-label'
+			'authorizenet-sandbox-md5-hash',
 		);
 
 		$default_wizard_authorizenet_settings = apply_filters( 'default_wizard_authorizenet_settings', $fields );
@@ -334,12 +354,38 @@ class IT_Exchange_AuthorizeNet_Add_On {
 
 		$errors = array();
 
-		if ( empty( $values['authorizenet-api-login-id'] ) )
+		if ( empty( $values['authorizenet-api-login-id'] ) ) {
 			$errors[] = __( 'Please include your API Login ID', 'LION' );
+		}
 
-		if ( empty( $values['authorizenet-transaction-key'] ) )
+		if ( empty( $values['authorizenet-transaction-key'] ) ) {
 			$errors[] = __( 'Please include your Transaction Key', 'LION' );
+		}
 
+		if ( empty( $values['authorizenet-md5-hash'] ) ) {
+			$errors[] = __( 'Please include your MD5 Hash Value', 'LION' );
+		}
+
+		if ( empty( $values['authorizenet-purchase-button-label'] ) ) {
+			$errors[] = __( 'Please include a label for the purchase button', 'LION' );
+		}
+		
+		if ( !empty( $values['authorizenet-sandbox-mode'] ) ) {
+			
+			if ( empty( $values['authorizenet-sandbox-api-login-id'] ) ) {
+				$errors[] = __( 'Please include your Sandbox API Login ID', 'LION' );
+			}
+	
+			if ( empty( $values['authorizenet-sandbox-transaction-key'] ) ) {
+				$errors[] = __( 'Please include your Sandbox Transaction Key', 'LION' );
+			}
+	
+			if ( empty( $values['authorizenet-sandbox-md5-hash'] ) ) {
+				$errors[] = __( 'Please include your Sandbox MD5 Hash Value', 'LION' );
+			}
+			
+		}
+			
 		return $errors;
 	}
 
