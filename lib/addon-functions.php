@@ -6,26 +6,6 @@
 */
 
 /**
- * Adds actions to the plugins page for the iThemes Exchange Authorize.Net plugin
- *
- * @since 1.0.0
- *
- * @param array $meta Existing meta
- * @param string $plugin_file the wp plugin slug (path)
- * @param array $plugin_data the data WP harvested from the plugin header
- * @param string $context
- * @return array
-*/
-function it_exchange_authorizenet_plugin_row_actions( $actions, $plugin_file, $plugin_data, $context ) {
-
-	$actions['setup_addon'] = '<a href="' . esc_url( admin_url( 'admin.php?page=it-exchange-addons&add-on-settings=authorizenet' ) ) . '">' . __( 'Setup Add-on', 'it-l10n-exchange-addon-authorize-net' ) . '</a>';
-
-	return $actions;
-
-}
-add_filter( 'plugin_action_links_exchange-addon-authorizenet/exchange-addon-authorizenet.php', 'it_exchange_authorizenet_plugin_row_actions', 10, 4 );
-
-/**
  * Grab the Authorize.Net customer ID for a WP user
  *
  * @since 1.0.0
@@ -125,24 +105,65 @@ function it_exchange_authorizenet_addon_delete_authorizenet_id_from_customer( $a
 	foreach( $transactions as $transaction ) { //really only one
 		$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
 		if ( false !== ( $current_auth_net_id = it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_id ) ) ) {
-
-			if ( $current_auth_net_id === $auth_net_id )
+			if ( $current_auth_net_id === $auth_net_id ) {
 				delete_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $mode );
-
+			}
 		}
 	}
 }
 
 /**
- * Loads minimal front-end styling
+ * Updates a subscription ID to post_meta for a paypal transaction
  *
- * @uses wp_enqueue_style()
- * @since 1.0.0
- * @return void
+ * @since 1.3.0
+ * @param string $paypal_standard_id PayPal Transaction ID
+ * @param string $subscriber_id PayPal Subscriber ID
 */
-function it_exchange_authorize_net_css() {
-	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' ) )
-		wp_enqueue_style( 'it_exchange_authorize', plugins_url( 'css/authorize.css', __FILE__ ) );
+function it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $subscriber_id ) {
+	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $txn_id );
+	foreach( $transactions as $transaction ) { //really only one
+		do_action( 'it_exchange_update_transaction_subscription_id', $transaction, $subscriber_id );
+	}
 }
 
-add_action( 'wp_enqueue_scripts', 'it_exchange_authorize_net_css' );
+/**
+ * Add a new transaction, really only used for subscription payments.
+ * If a subscription pays again, we want to create another transaction in Exchange
+ * This transaction needs to be linked to the parent transaction.
+ *
+ * @since CHANGEME
+ *
+ * @param integer $authorizenet_id id of Authorize.Net transaction
+ * @param string $payment_status new status
+ * @param string $subscriber_id from PayPal (optional)
+ * @return bool
+*/
+function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id, $payment_status, $subscriber_id, $amount ) {
+	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $authorizenet_id );
+	if ( !empty( $transactions ) ) {
+		//this transaction DOES exist, don't try to create a new one, just update the status
+		it_exchange_authorizenet_addon_update_transaction_status( $authorizenet_id, $payment_status );		
+	} else { 
+	
+		if ( !empty( $subscriber_id ) ) {
+			
+			$transactions = it_exchange_stripe_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
+			foreach( $transactions as $transaction ) { //really only one
+				$parent_tx_id = $transaction->ID;
+				$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
+			}
+			
+		} else {
+			$parent_tx_id = false;
+			$customer_id = false;
+		}
+		
+		if ( $parent_tx_id && $customer_id ) {
+			$transaction_object = new stdClass;
+			$transaction_object->total = $amount / 100;
+			it_exchange_add_child_transaction( 'stripe', $stripe_id, $payment_status, $customer_id, $parent_tx_id, $transaction_object );
+			return true;
+		}
+	}
+	return false;
+}
