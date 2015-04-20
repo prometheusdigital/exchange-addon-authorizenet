@@ -17,3 +17,5 @@
 1.0.6 - 2015-03-16 - Lew Ayotte
 	Fixed bug caused when purchasing as a guest
 	Added more robust billing/shipping address information handling
+1.1.0 - 2015-04-20 - Lew Ayotte
+	Multiple updates involving add_query_arg and remove_query_arg to esc_url()
