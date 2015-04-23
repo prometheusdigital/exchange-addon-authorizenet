@@ -144,15 +144,12 @@ function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id,
 		//this transaction DOES exist, don't try to create a new one, just update the status
 		it_exchange_authorizenet_addon_update_transaction_status( $authorizenet_id, $payment_status );		
 	} else { 
-	
 		if ( !empty( $subscriber_id ) ) {
-			
-			$transactions = it_exchange_stripe_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
+			$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
 			foreach( $transactions as $transaction ) { //really only one
 				$parent_tx_id = $transaction->ID;
 				$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
 			}
-			
 		} else {
 			$parent_tx_id = false;
 			$customer_id = false;
@@ -161,9 +158,26 @@ function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id,
 		if ( $parent_tx_id && $customer_id ) {
 			$transaction_object = new stdClass;
 			$transaction_object->total = $amount / 100;
-			it_exchange_add_child_transaction( 'stripe', $stripe_id, $payment_status, $customer_id, $parent_tx_id, $transaction_object );
+			it_exchange_add_child_transaction( 'authorizenet', $authorizenet_id, $payment_status, $customer_id, $parent_tx_id, $transaction_object );
 			return true;
 		}
 	}
 	return false;
+}
+
+/**
+ * Grab a transaction from the Authorize.Net subscriber ID
+ *
+ * @since CHANGEME
+ *
+ * @param integer $subscriber_id id of stripe transaction
+ * @return transaction object
+*/
+function it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id) {
+    $args = array(
+        'meta_key'    => '_it_exchange_transaction_subscriber_id',
+        'meta_value'  => $subscriber_id,
+        'numberposts' => 1, //we should only have one, so limit to 1
+    );
+    return it_exchange_get_transactions( $args );
 }
