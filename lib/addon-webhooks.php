@@ -61,9 +61,7 @@ function it_exchange_authorizenet_addon_process_webhook( $request ) {
 			switch ( $request['x_response_code'] ) {
 				
 				case 1:
-					global $ite_child_transaction;
-					$ite_child_transaction = true;
-					wp_mail( 'lew@ithemes.com', 'authorize $request', print_r( $request, true ) );
+					$GLOBALS['it_exchange']['child_transaction'] = true;
 					it_exchange_authorizenet_addon_add_child_transaction( $txn_id, '1', $subscriber_id, $amount ); //1 = Paid
 					it_exchange_authorizenet_addon_update_subscriber_status( $subscriber_id, 'active' );
 					break;
