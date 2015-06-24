@@ -73,7 +73,7 @@ function ithemes_exchange_authorizenet_deactivate() {
 		$title = __( 'Payment Gateway Warning', 'LION' );
 		$yes = '<a href="' . esc_url( add_query_arg( 'remove-gateway', 'yes' ) ) . '">' . __( 'Yes', 'LION' ) . '</a>';
 		$no  = '<a href="javascript:history.back()">' . __( 'No', 'LION' ) . '</a>';
-		$message = '<p>' . sprintf( __( 'Deactivating a payment gateway can cause customers to lose access to any membership products they have purchased. Are you sure you want to proceed? %s | %s', 'LION' ), $yes, $no ) . '</p>';
+		$message = '<p>' . sprintf( __( 'Deactivating a payment gateway can cause customers to lose access to any membership products they have purchased using this payment gateway. Are you sure you want to proceed? %s | %s', 'LION' ), $yes, $no ) . '</p>';
 		$args = array(
 			'response'  => 200,
 			'back_link' => false,
