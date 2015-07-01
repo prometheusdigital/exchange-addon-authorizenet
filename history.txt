@@ -21,3 +21,6 @@
 	Multiple updates involving add_query_arg and remove_query_arg to esc_url()
 1.1.1 - 2015-04-23 - Packaging Bot (lib/updater)
 	Compatibility Fix: Updated plugin and theme update data format to match changes in WordPress 4.2.
+1.2.0 - 2015-07-01 - Lew Ayotte
+	Add deactivation warning
+	Add support for Recurring Payments
