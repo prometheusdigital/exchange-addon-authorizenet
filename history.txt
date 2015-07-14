@@ -24,3 +24,5 @@
 1.2.0 - 2015-07-01 - Lew Ayotte
 	Add deactivation warning
 	Add support for Recurring Payments
+1.2.1 - 2015-07-14 - Packaging Bot (lib/updater)
+	Enhancement: Updated link to iThemes support.
