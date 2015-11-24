@@ -58,7 +58,9 @@ add_action( 'admin_enqueue_scripts', 'it_exchange_authorizenet_addon_admin_enque
  * @return void
 */
 function it_exchange_authorizenet_addon_wp_enqueue_script() {
-	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' ) ) {
+	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' )
+	     || ( class_exists( 'IT_Exchange_SW_Shortcode' ) && IT_Exchange_SW_Shortcode::has_shortcode() )
+	) {
 		wp_enqueue_style( 'it_exchange_authorize', plugins_url( 'css/authorize.css', __FILE__ ) );
 	}
 }
