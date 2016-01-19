@@ -58,7 +58,9 @@ add_action( 'admin_enqueue_scripts', 'it_exchange_authorizenet_addon_admin_enque
  * @return void
 */
 function it_exchange_authorizenet_addon_wp_enqueue_script() {
-	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' ) ) {
+	if ( it_exchange_is_page( 'product' ) || it_exchange_is_page( 'cart' ) || it_exchange_is_page( 'checkout' )
+	     || ( class_exists( 'IT_Exchange_SW_Shortcode' ) && IT_Exchange_SW_Shortcode::has_shortcode() )
+	) {
 		wp_enqueue_style( 'it_exchange_authorize', plugins_url( 'css/authorize.css', __FILE__ ) );
 	}
 }
@@ -120,9 +122,9 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 		try {
 			$settings         = it_exchange_get_option( 'addon_authorizenet' );
 	
-			$api_url       = ( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
-			$api_username  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-api-sandbox-login-id'] : $settings['authorizenet-api-login-id'];
-			$api_password  = ( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+			$api_url       = !empty( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+			$api_username  = !empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
+			$api_password  = !empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 			$it_exchange_customer = it_exchange_get_current_customer();
 			
 			$subscription = false;
@@ -370,10 +372,6 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 								'zip'              => $transaction_object->billing_address['zip'],
 								'country'          => $transaction_object->billing_address['country'],
 							),
-							'retail'          => array(
-								'marketType'       => 0, //ecommerce
-								'deviceType'       => 8, //Website
-							)
 						),
 					),
 				);
@@ -385,6 +383,9 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
 				}
+				
+				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; //ecommerce
+				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; //Website
 			}
 					
 			$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields );
