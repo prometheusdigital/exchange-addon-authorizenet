@@ -30,3 +30,5 @@
 	Fixing bug when shipping address is set for non-recurring payments
 1.4.0 - 2015-11-30 - Timothy Jacobs, Lew Ayotte
 	Enqueue CSS on pages with SW shortcode
+1.4.1 - 2016-03-10 - Timothy Jacobs
+	Tweak: Better error reporting
