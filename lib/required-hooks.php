@@ -397,11 +397,21 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	            'body' => json_encode( $transaction_fields ),
 			);
 	
-			$response = wp_remote_post( $api_url, $query );	
-			
+			$response = wp_remote_post( $api_url, $query );
+
 			if ( !is_wp_error( $response ) ) {		
 				$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
 				$obj = json_decode( $body, true );
+
+				if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
+					if ( ! empty( $obj['messages']['message'] ) ) {
+						$error = reset( $obj['messages']['message'] );
+						it_exchange_add_message( 'error', $error['text'] );
+
+						return false;
+					}
+				}
+
 				if ( $subscription ) {
 					if ( !empty( $obj['subscriptionId'] ) ) {
 						$txn_id = it_exchange_add_transaction( 'authorizenet', $reference_id, 1, $it_exchange_customer->id, $transaction_object );
