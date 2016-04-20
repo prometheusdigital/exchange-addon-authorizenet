@@ -415,6 +415,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				if ( $subscription ) {
 					if ( !empty( $obj['subscriptionId'] ) ) {
 						$txn_id = it_exchange_add_transaction( 'authorizenet', $reference_id, 1, $it_exchange_customer->id, $transaction_object );
+						it_exchange_recurring_payments_addon_update_transaction_subscription_id( $txn_id, $obj['subscriptionId'] );
 						it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $obj['subscriptionId'] );
 						return $txn_id;
 					} else {
