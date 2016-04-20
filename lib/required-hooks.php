@@ -471,6 +471,67 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 add_action( 'it_exchange_do_transaction_authorizenet', 'it_exchange_authorizenet_addon_process_transaction', 10, 2 );
 
 /**
+ * Process a cancel subscription request.
+ *
+ * We only listen for ones that pass the subscription object. The other ones are fired from the
+ * it_exchange_add_transaction() function, and we take care of those cancellations in our communications
+ * with Authorize.net. So we don't want to cancel them here.
+ *
+ * @since 1.4.2
+ * 
+ * @param array $details
+ * 
+ * @throws Exception
+ */
+function it_exchange_authorizenet_addon_cancel_subscription( $details ) {
+	
+	if ( empty( $details['subscription'] ) || ! $details['subscription'] instanceof IT_Exchange_Subscription ) {
+		return;
+	}
+
+	$settings = it_exchange_get_option( 'addon_authorizenet' );
+
+	$api_url       = ! empty( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+	$api_username  = ! empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
+	$api_password  = ! empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+
+	$request = array(
+		'ARBCancelSubscriptionRequest' => array(
+			'merchantAuthentication' => array(
+				'name'			     => $api_username,
+				'transactionKey'     => $api_password,
+			),
+			'subscriptionId' => $details['subscription']->get_subscriber_id()
+		),
+	);
+	
+	$query = array(
+		'headers' => array(
+			'Content-Type' => 'application/json',
+		),
+		'body' => json_encode( $request ),
+	);
+
+	$response = wp_remote_post( $api_url, $query );
+	
+	if ( ! is_wp_error( $response ) ) {
+		$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
+		$obj  = json_decode( $body, true );
+
+		if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
+			if ( ! empty( $obj['messages']['message'] ) ) {
+				$error = reset( $obj['messages']['message'] );
+				it_exchange_add_message( 'error', $error['text'] );
+			}
+		}
+	} else {
+		throw new Exception( $response->get_error_message() );
+	}
+}
+
+add_action( 'it_exchange_cancel_authorizenet_subscription', 'it_exchange_authorizenet_addon_cancel_subscription' );
+
+/**
  * Returns the button for making the payment
  *
  * Exchange will loop through activated Payment Methods on the checkout page
