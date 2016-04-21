@@ -489,6 +489,10 @@ function it_exchange_authorizenet_addon_cancel_subscription( $details ) {
 		return;
 	}
 
+	if ( ! $details['subscription']->get_subscriber_id() ) {
+		return;
+	}
+
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
 
 	$api_url       = ! empty( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
