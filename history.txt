@@ -32,3 +32,5 @@
 	Enqueue CSS on pages with SW shortcode
 1.4.1 - 2016-03-10 - Timothy Jacobs
 	Tweak: Better error reporting
+1.4.2 = 2016-04-28 - Timothy Jacobs
+	Add: Support for cancelling subscriptions programatically
