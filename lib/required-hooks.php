@@ -562,7 +562,12 @@ function it_exchange_authorizenet_addon_make_payment_button( $options ) {
 	}
 	// Use the ITExchange Purchase Dialog for CC fields
 	if ( function_exists( 'it_exchange_generate_purchase_dialog' ) ) {
-		return it_exchange_generate_purchase_dialog( 'authorizenet' );
+
+		$settings = it_exchange_get_option( 'addon_authorizenet' );
+
+		return it_exchange_generate_purchase_dialog( 'authorizenet', array(
+			'purchase-label' => $settings['authorizenet-purchase-button-label']
+		) );
 	}
 }
 
