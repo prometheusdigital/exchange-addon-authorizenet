@@ -83,6 +83,7 @@ function it_exchange_authorizenet_addon_default_settings( $values ) {
 		'authorizenet-sandbox-transaction-key' => '',
 		'authorizenet-sandbox-md5-hash'        => '',
 		'authorizenet-purchase-button-label'   => __( 'Purchase', 'LION' ),
+		'evosnap-international'                => false
 	);
 	$values = ITUtility::merge_defaults( $values, $defaults );
 	return $values;
@@ -234,7 +235,11 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<label for="authorizenet-md5-hash"><?php _e( 'MD5 Hash Value', 'LION' ); ?> <span class="tip" title="<?php _e( 'The MD5 Hash Value should match the value you set in your Authorize.Net account at Account -> MD5-Hash. It can be up to 20 characters long, including upper- and lower-case letters, numbers, spaces, and punctuation. More complex values will be more secure.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-md5-hash' ); ?>
 			</p>
-			
+			<p>
+				<?php $form->add_check_box( 'evosnap-international' ); ?>
+				<label for="evosnap-international"><?php _e( 'EVOSnap International Account', 'LION' ); ?> <span class="tip" title="<?php _e( "Mark yes if your Authorize.net payment processor is an EVOSnap International account. If you don't know what your payment processor is, contact Authorize.net.", 'LION' ); ?>">i</span></label>
+			</p>
+
             <h4><?php _e( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ); ?></h4>
             <p><?php _e( 'The Silent Post URL can be configured in the Account section of the Authorize.Net dashboard. Click "Silent Post URL" to reveal a form to add a new URL for receiving a Silent Post.', 'LION' ); ?></p>
             <p><?php _e( 'Please log in to your account and add this URL to your Silent Post URL so iThemes Exchange is notified of things like refunds, payments, etc.', 'LION' ); ?></p>

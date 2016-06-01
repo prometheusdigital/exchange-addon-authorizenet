@@ -213,6 +213,12 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 					}
 				}
 			}
+
+			if ( $settings['evosnap-international'] && function_exists( 'it_exchange_convert_country_code' ) ) {
+				$country = it_exchange_convert_country_code( $transaction_object->billing_address['country'] );
+			} else {
+				$country = $transaction_object->billing_address['country'];
+			}
 			
 			if ( $subscription ) {
 				$upgrade_downgrade = it_exchange_get_session_data( 'updowngrade_details' );
@@ -264,7 +270,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 												'city'             => $transaction_object->billing_address['city'],
 												'state'            => $transaction_object->billing_address['state'],
 												'zip'              => $transaction_object->billing_address['zip'],
-												'country'          => $transaction_object->billing_address['country'],
+												'country'          => $country,
 											),
 										),
 									),
@@ -323,7 +329,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									'city'             => $transaction_object->billing_address['city'],
 									'state'            => $transaction_object->billing_address['state'],
 									'zip'              => $transaction_object->billing_address['zip'],
-									'country'          => $transaction_object->billing_address['country'],
+									'country'          => $country,
 								),
 							),
 						),
@@ -370,7 +376,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 								'city'             => $transaction_object->billing_address['city'],
 								'state'            => $transaction_object->billing_address['state'],
 								'zip'              => $transaction_object->billing_address['zip'],
-								'country'          => $transaction_object->billing_address['country'],
+								'country'          => $country,
 							),
 						),
 					),
