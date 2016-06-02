@@ -220,6 +220,14 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				$country = $transaction_object->billing_address['country'];
 			}
 			
+			$billing_zip = preg_replace( '/[^A-Za-z0-9\-]/', '', $transaction_object->billing_address['zip'] );
+
+			if ( ! empty( $transaction_object->shipping_address ) ) {
+				$shipping_zip = preg_replace( '/[^A-Za-z0-9\-]/', '', $transaction_object->shipping_address['zip'] );
+			} else {
+				$shipping_zip = '';
+			}
+
 			if ( $subscription ) {
 				$upgrade_downgrade = it_exchange_get_session_data( 'updowngrade_details' );
 				if ( !empty( $upgrade_downgrade ) ) {
@@ -269,7 +277,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 												'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
 												'city'             => $transaction_object->billing_address['city'],
 												'state'            => $transaction_object->billing_address['state'],
-												'zip'              => $transaction_object->billing_address['zip'],
+												'zip'              => $billing_zip,
 												'country'          => $country,
 											),
 										),
@@ -284,7 +292,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
 						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
 						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
-						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['zip']     = $shipping_zip;
 						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
 					}
 				} else {
@@ -328,7 +336,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
 									'city'             => $transaction_object->billing_address['city'],
 									'state'            => $transaction_object->billing_address['state'],
-									'zip'              => $transaction_object->billing_address['zip'],
+									'zip'              => $billing_zip,
 									'country'          => $country,
 								),
 							),
@@ -340,7 +348,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
 						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
 						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
-						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['zip']     = $shipping_zip;
 						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
 					}
 				}
@@ -375,7 +383,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 								'address'          => $transaction_object->billing_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->billing_address['address2'] : '' ),
 								'city'             => $transaction_object->billing_address['city'],
 								'state'            => $transaction_object->billing_address['state'],
-								'zip'              => $transaction_object->billing_address['zip'],
+								'zip'              => $billing_zip,
 								'country'          => $country,
 							),
 						),
@@ -386,7 +394,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
-					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['zip']     = $transaction_object->shipping_address['zip'];                 
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['zip']     = $shipping_zip;
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
 				}
 				
