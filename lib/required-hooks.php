@@ -401,6 +401,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 		            'Content-Type' => 'application/json',
 				),
 	            'body' => json_encode( $transaction_fields ),
+				'timeout' => 30
 			);
 	
 			$response = wp_remote_post( $api_url, $query );
