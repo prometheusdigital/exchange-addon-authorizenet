@@ -34,3 +34,6 @@
 	Tweak: Better error reporting
 1.4.2 = 2016-04-28 - Timothy Jacobs
 	Add: Support for cancelling subscriptions programatically
+1.4.3 - 2016-06-03 - Timothy Jacobs
+	Add: Support for EVOSnap International accounts
+	Fix: Strip invalid characters from zip codes
