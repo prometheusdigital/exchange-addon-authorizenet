@@ -254,7 +254,7 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			<h4 class="hide-if-wizard"><?php _e( 'Optional:', 'LION' ); ?></h4>
 			<p class="hide-if-wizard">
 				<?php $form->add_check_box( 'authorizenet-test-mode', array( 'class' => 'show-test-mode-options' ) ); ?>
-				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Live credentials. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
+				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Live credentials. Recurring payments do not support test mode and will still charge the customer. This mode needs to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
 			</p>
 			
 			<h4 class="hide-if-wizard"><?php _e( 'Sandbox Mode:', 'LION' ); ?></h4>
