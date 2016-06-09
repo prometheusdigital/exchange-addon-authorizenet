@@ -400,6 +400,15 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				
 				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; //ecommerce
 				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; //Website
+
+				if ( $settings['authorizenet-test-mode'] ) {
+					$transaction_fields['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
+						'setting' => array(
+							'settingName' => 'testRequest',
+							'settingValue' => true
+						)
+					);
+				}
 			}
 					
 			$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields );
@@ -444,6 +453,10 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				} else {
 					$transaction = $obj['transactionResponse'];
 					$transaction_id = $transaction['transId'];
+
+					if ( empty( $transaction_id ) ) { // transId is 0 for all test requests. Generate a random one.
+						$transaction_id = substr( uniqid( 'test_' ), 0, 12 );
+					}
 					
 					switch( $transaction['responseCode'] ) {
 						case '1': //Approved
