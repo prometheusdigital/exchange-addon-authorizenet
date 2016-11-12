@@ -11,6 +11,7 @@ add_action( 'it_exchange_register_gateways', function( ITE_Gateways $gateways ) 
 	require_once dirname( __FILE__ ) . '/class.gateway.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.purchase.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.webhook.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.refund.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.cancel-subscription.php';
 
 	$gateways::register( new ITE_AuthorizeNet_Gateway() );
@@ -21,27 +22,34 @@ add_action( 'it_exchange_register_gateways', function( ITE_Gateways $gateways ) 
 add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
 
 /**
- * Authorize.Net Endpoint URL to perform refunds
+ * Can the authorize.net transaction be refunded.
  *
- * The it_exchange_refund_url_for_[addon-slug] filter is
- * used to generate the link for the 'Refund Transaction' button
- * found in the admin under Customer Payments
+ * @since 1.5.0
  *
- * Worth noting here that in order to submit the refund (CREDIT method call to standard AIM endpoint),
- * we need to capture and return the last four digits of the CC.
+ * @param bool                    $eligible
+ * @param IT_Exchange_Transaction $transaction
  *
- * @since 1.0.0
- *
- * @param string $url passed by WP filter.
- * @param string $url transaction URL
-*/
-function it_exchange_refund_url_for_authorizenet( $url ) {
-	$settings = it_exchange_get_option( 'addon_authorizenet' );
-	$url      = $settings['authorizenet-sandbox-mode'] ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+ * @return bool
+ */
+function it_exchange_authorizenet_transaction_can_be_refunded( $eligible, IT_Exchange_Transaction $transaction ) {
 
-	return $url;
+	if ( ! $eligible ) {
+		return $eligible;
+	}
+
+	if ( ! $transaction->get_meta( 'authorize_net_last_4' ) ) {
+		return false;
+	}
+
+	$now    = new DateTime();
+	$placed = $transaction->order_date;
+
+	$diff = $placed->diff( $now );
+
+	return $diff->days < 179;
 }
-//add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_for_authorizenet' );
+
+add_filter( 'it_exchange_authorizenet_transaction_can_be_refunded', 'it_exchange_authorizenet_transaction_can_be_refunded', 10, 2 );
 
 /**
  * Enqueues admin scripts on Settings page

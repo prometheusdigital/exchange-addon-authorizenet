@@ -186,8 +186,6 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 				it_exchange_recurring_payments_addon_update_transaction_subscription_id( $txn_id, $obj['subscriptionId'] );
 				it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $obj['subscriptionId'] );
-
-				return it_exchange_get_transaction( $txn_id );
 			} else {
 				$error = '';
 				if ( ! empty( $transaction['messages'] ) ) {
@@ -214,8 +212,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				case '1': //Approved
 				case '4': //Held for Review
 					$txn_id = it_exchange_add_transaction( 'authorizenet', $method_id, $transaction['responseCode'], $cart );
-
-					return it_exchange_get_transaction( $txn_id );
+					break;
 				case '2': //Declined
 				case '3': //Error
 
@@ -240,7 +237,14 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			}
 		}
 
-		return null;
+		if ( ! isset( $txn_id ) ) {
+			return null;
+		}
+
+		$transaction = it_exchange_get_transaction( $txn_id );
+		$transaction->update_meta( 'authorize_net_last_4', substr( $request->get_card()->get_number(), - 4 ) );
+
+		return $transaction;
 	}
 
 	/**

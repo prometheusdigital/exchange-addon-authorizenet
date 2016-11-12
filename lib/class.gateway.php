@@ -23,6 +23,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 
 		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, new ITE_Gateway_Request_Factory() );
 		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler();
+		$this->handlers[] = new ITE_AuthorizeNet_Refund_Request_Handler( $this );
 		$this->handlers[] = new ITE_AuthorizeNet_Cancel_Subscription_Request_Handler( $this );
 
 		parent::__construct();
