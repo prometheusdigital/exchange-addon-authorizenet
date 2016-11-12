@@ -171,7 +171,8 @@ function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id,
  * @since CHANGEME
  *
  * @param integer $subscriber_id id of stripe transaction
- * @return transaction object
+ *
+ * @return IT_Exchange_Transaction[] object
 */
 function it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id) {
     $args = array(

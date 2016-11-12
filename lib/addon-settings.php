@@ -46,7 +46,7 @@ function it_exchange_print_authorizenet_wizard_settings( $form ) {
 	</div>
 	<?php
 }
-add_action( 'it_exchange_print_authorizenet_wizard_settings', 'it_exchange_print_authorizenet_wizard_settings' );
+//add_action( 'it_exchange_print_authorizenet_wizard_settings', 'it_exchange_print_authorizenet_wizard_settings' );
 
 /**
  * Saves Authorize.Net settings when the Wizard is saved
@@ -62,7 +62,7 @@ function it_exchange_save_authorizenet_wizard_settings( $errors ) {
 	$IT_Exchange_AuthorizeNet_Add_On = new IT_Exchange_AuthorizeNet_Add_On();
 	return $IT_Exchange_AuthorizeNet_Add_On->authorizenet_save_wizard_settings();
 }
-add_action( 'it_exchange_save_authorizenet_wizard_settings', 'it_exchange_save_authorizenet_wizard_settings' );
+//add_action( 'it_exchange_save_authorizenet_wizard_settings', 'it_exchange_save_authorizenet_wizard_settings' );
 
 /**
  * Default settings for Authorize.Net
@@ -88,7 +88,7 @@ function it_exchange_authorizenet_addon_default_settings( $values ) {
 	$values = ITUtility::merge_defaults( $values, $defaults );
 	return $values;
 }
-add_filter( 'it_storage_get_defaults_exchange_addon_authorizenet', 'it_exchange_authorizenet_addon_default_settings' );
+//add_filter( 'it_storage_get_defaults_exchange_addon_authorizenet', 'it_exchange_authorizenet_addon_default_settings' );
 
 /**
  * Filters default currencies to only display those supported by Authorize.Net

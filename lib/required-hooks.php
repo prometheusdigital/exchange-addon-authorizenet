@@ -6,6 +6,16 @@
  * We've placed them all in one file to help add-on devs identify them more easily
 */
 
+add_action( 'it_exchange_register_gateways', function( ITE_Gateways $gateways ) {
+
+	require_once dirname( __FILE__ ) . '/class.gateway.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.purchase.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.webhook.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.cancel-subscription.php';
+
+	$gateways::register( new ITE_AuthorizeNet_Gateway() );
+} );
+
 //For verifying CC... 
 //incase a product doesn't have a shipping address and the shipping add-on is not enabled
 add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
@@ -32,7 +42,6 @@ function it_exchange_refund_url_for_authorizenet( $url ) {
 	return $url;
 }
 //add_filter( 'it_exchange_refund_url_for_authorizenet', 'it_exchange_refund_url_for_authorizenet' );
-//HEREHEREHERE I Don't know what this is doing!?
 
 /**
  * Enqueues admin scripts on Settings page
@@ -496,7 +505,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	return false;
 
 }
-add_action( 'it_exchange_do_transaction_authorizenet', 'it_exchange_authorizenet_addon_process_transaction', 10, 2 );
+//add_action( 'it_exchange_do_transaction_authorizenet', 'it_exchange_authorizenet_addon_process_transaction', 10, 2 );
 
 /**
  * Process a cancel subscription request.
@@ -593,7 +602,7 @@ function it_exchange_authorizenet_addon_make_payment_button( $options ) {
 	}
 }
 
-add_filter( 'it_exchange_get_authorizenet_make_payment_button', 'it_exchange_authorizenet_addon_make_payment_button', 10, 2 );
+//add_filter( 'it_exchange_get_authorizenet_make_payment_button', 'it_exchange_authorizenet_addon_make_payment_button', 10, 2 );
 
 /**
  * Gets the interpreted transaction status from valid Authorize.net transaction statuses
