@@ -67,6 +67,18 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * @inheritDoc
 	 */
+	public function is_currency_support_limited() { return true; }
+
+	/**
+	 * @inheritDoc
+	 */
+	public function get_supported_currencies() {
+		return array( 'USD', 'CAD', 'GBP', 'EUR' );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public function get_wizard_settings() {
 		$fields = array(
 			'preamble',

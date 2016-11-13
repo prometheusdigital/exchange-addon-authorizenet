@@ -103,7 +103,7 @@ function it_exchange_authorizenet_addon_get_currency_options( $default_currencie
 	$authnet_currencies = $IT_Exchange_AuthorizeNet_Add_On->get_supported_currency_options();
 	return array_intersect_key( $default_currencies, $authnet_currencies );
 }
-add_filter( 'it_exchange_get_currency_options', 'it_exchange_authorizenet_addon_get_currency_options' );
+//add_filter( 'it_exchange_get_currency_options', 'it_exchange_authorizenet_addon_get_currency_options' );
 
 /**
  * Class for Authorize.Net
