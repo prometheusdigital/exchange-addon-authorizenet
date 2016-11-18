@@ -37,6 +37,14 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 		if ( $sub_payment_schedule ) {
 
+			$total = $cart->get_total();
+			$fee   = $subscription_product->get_line_items()->with_only( 'fee' )
+			                              ->having_param( 'is_free_trial', 'is_prorate_days' )->first();
+
+			if ( $fee ) {
+				$total += $fee->get_total() * - 1;
+			}
+
 			if (
 				$request instanceof ITE_Gateway_Prorate_Purchase_Request &&
 				( $prorate_requests = $request->get_prorate_requests() ) &&
@@ -56,7 +64,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						'subscription'           => array(
 							'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 							'paymentSchedule' => $sub_payment_schedule,
-							'amount'          => it_exchange_get_cart_total( false, array( 'cart' => $cart ) ),
+							'amount'          => $total,
 							'trialAmount'     => 0.00,
 							'payment'         => $this->generate_payment( $request ),
 							'order'           => array(
@@ -85,7 +93,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						'subscription'           => array(
 							'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 							'paymentSchedule' => $sub_payment_schedule,
-							'amount'          => it_exchange_get_cart_total( false, array( 'cart' => $cart ) ),
+							'amount'          => $total,
 							'trialAmount'     => 0.00,
 							'payment'         => $this->generate_payment( $request ),
 							'order'           => array(

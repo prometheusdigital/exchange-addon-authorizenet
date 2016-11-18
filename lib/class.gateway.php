@@ -14,6 +14,9 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/** @var ITE_Gateway_Request_Handler[] */
 	private $handlers = array();
 
+	/** @var array */
+	private $fields = array();
+
 	/**
 	 * ITE_AuthorizeNet_Gateway constructor.
 	 *
@@ -107,7 +110,12 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	 * @inheritDoc
 	 */
 	public function get_settings_fields() {
-		return array(
+
+		if ( $this->fields ) {
+			return $this->fields;
+		}
+
+		$fields = array(
 			array(
 				'slug' => 'preamble',
 				'type' => 'html',
@@ -215,6 +223,10 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 			),
 		);
+
+		$this->fields = $fields;
+
+		return $fields;
 	}
 
 	/**
