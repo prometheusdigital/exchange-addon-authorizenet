@@ -84,7 +84,9 @@ class ITE_AuthorizeNet_Cancel_Subscription_Request_Handler implements ITE_Gatewa
 			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
-		$subscription->set_status( IT_Exchange_Subscription::STATUS_CANCELLED );
+		if ( $request->should_set_status() ) {
+			$subscription->set_status( IT_Exchange_Subscription::STATUS_CANCELLED );
+		}
 
 		if ( $request->get_reason() ) {
 			$subscription->set_cancellation_reason( $request->get_reason() );
