@@ -147,6 +147,8 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 			$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
 		}
 
+		$subscription->set_card( $card );
+
 		return true;
 	}
 
