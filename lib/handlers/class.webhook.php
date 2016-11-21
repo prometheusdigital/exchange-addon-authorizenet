@@ -29,32 +29,54 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			$sent_md5 = strtoupper( $webhook['x_MD5_Hash'] );
 			$made_md5 = strtoupper( md5( $secret . $txn_id . $amount ) );
 
-			if ( hash_equals( $sent_md5, $made_md5 ) ) {
+			if ( ! hash_equals( $sent_md5, $made_md5 ) ) {
 
-				$subscriber_id = ! empty( $webhook['x_subscription_id'] ) ? $webhook['x_subscription_id'] : false;
-
-				if ( $webhook['x_response_code'] == 1 ) {
-					$GLOBALS['it_exchange']['child_transaction'] = true;
-					it_exchange_authorizenet_addon_add_child_transaction( $txn_id, '1', $subscriber_id, $amount ); //1 = Paid
-					$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
-
-					foreach ( $transactions as $transaction ) {
-						$subscription = it_exchange_get_subscription_by_transaction( $transaction );
-
-						if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_ACTIVE ) {
-							$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
-						}
-					}
-				}
-
-			} else {
 				$message = __( 'Unable to validate Silent Post from Authorize.Net.', 'it-l10n-ithemes-exchange' );
 				$message .= sprintf(
 					__( 'Please double check your MD5 Hash Value in the Authorize.Net settings in iThemes Exchange and your Authorize.Net account: %s', 'LION' ),
 					maybe_serialize( $webhook )
 				);
+
 				error_log( $message );
+
+				return;
 			}
+
+			$subscriber_id = ! empty( $webhook['x_subscription_id'] ) ? $webhook['x_subscription_id'] : false;
+			$transactions  = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
+
+			foreach ( $transactions as $transaction ) {
+				try {
+					$subscription = it_exchange_get_subscription_by_transaction( $transaction );
+					break;
+				} catch ( Exception $e ) {
+					return;
+				}
+			}
+
+			if ( ! isset( $subscription ) ) {
+				return;
+			}
+
+			switch ( (int) $webhook['x_response_code'] ) {
+				case 1:
+					$GLOBALS['it_exchange']['child_transaction'] = true;
+					it_exchange_authorizenet_addon_add_child_transaction( $txn_id, '1', $subscriber_id, $amount ); //1 = Paid
+
+					if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_ACTIVE ) {
+						$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
+					}
+					break;
+				case 2:
+				case 3:
+
+					if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_SUSPENDED ) {
+						$subscription->set_status( IT_Exchange_Subscription::STATUS_SUSPENDED );
+					}
+
+					break;
+			}
+
 		} else {
 			error_log( sprintf( __( 'Invalid Silent Post sent from Authorize.Net: %s', 'it-l10n-ithemes-exchange' ), maybe_serialize( $webhook ) ) );
 		}

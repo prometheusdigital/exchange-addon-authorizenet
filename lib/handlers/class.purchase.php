@@ -188,9 +188,15 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			return null;
 		}
 
+		$txn_args = array();
+
+		if ( $request->get_card() ) {
+			$txn_args['card'] = $request->get_card();
+		}
+
 		if ( $sub_payment_schedule ) {
 			if ( ! empty( $obj['subscriptionId'] ) ) {
-				$txn_id = it_exchange_add_transaction( 'authorizenet', $reference_id, 1, $cart );
+				$txn_id = $this->add_transaction( $request, $reference_id, 1, $txn_args );
 
 				it_exchange_recurring_payments_addon_update_transaction_subscription_id( $txn_id, $obj['subscriptionId'] );
 				it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $obj['subscriptionId'] );
@@ -219,7 +225,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			switch ( $transaction['responseCode'] ) {
 				case '1': //Approved
 				case '4': //Held for Review
-					$txn_id = it_exchange_add_transaction( 'authorizenet', $method_id, $transaction['responseCode'], $cart );
+					$txn_id = $this->add_transaction( $request, $method_id, $transaction['responseCode'], $txn_args );
 					break;
 				case '2': //Declined
 				case '3': //Error
@@ -249,10 +255,30 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			return null;
 		}
 
-		$transaction = it_exchange_get_transaction( $txn_id );
-		$transaction->update_meta( 'authorize_net_last_4', substr( $request->get_card()->get_number(), - 4 ) );
+		return it_exchange_get_transaction( $txn_id );
+	}
 
-		return $transaction;
+	/**
+	 * Add the transaction.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request_Interface $request
+	 * @param string                                 $method_id
+	 * @param int                                    $status
+	 * @param array                                  $args
+	 *
+	 * @return int|false
+	 */
+	protected function add_transaction( ITE_Gateway_Purchase_Request_Interface $request, $method_id, $status, $args ) {
+
+		$cart = $request->get_cart();
+
+		if ( $p = $request->get_child_of() ) {
+			return it_exchange_add_child_transaction( 'authorizenet', $method_id, $status, $cart, $p->ID, $args );
+		} else {
+			return it_exchange_add_transaction( 'authorizenet', $method_id, $status, $cart, null, $args );
+		}
 	}
 
 	/**

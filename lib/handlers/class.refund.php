@@ -59,7 +59,7 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 					'refTransId'      => $transaction->get_method_id(),
 					'payment'         => array(
 						'creditCard' => array(
-							'cardNumber'     => $transaction->get_meta( 'authorize_net_last_4' ),
+							'cardNumber'     => $transaction->get_card()->get_redacted_number(),
 							'expirationDate' => 'XXXX',
 						)
 					)

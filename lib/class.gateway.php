@@ -24,9 +24,18 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	 */
 	public function __construct() {
 
-		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, new ITE_Gateway_Request_Factory() );
+		$factory = new ITE_Gateway_Request_Factory();
+
+		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, $factory );
 		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler();
 		$this->handlers[] = new ITE_AuthorizeNet_Refund_Request_Handler( $this );
+
+		if ( class_exists( 'ITE_Daily_Price_Calculator' ) ) {
+			$this->handlers[] = new ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler(
+				$this, new ITE_Daily_Price_Calculator(), $factory
+			);
+		}
+
 		$this->handlers[] = new ITE_AuthorizeNet_Cancel_Subscription_Request_Handler( $this );
 
 		parent::__construct();
