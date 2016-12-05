@@ -14,7 +14,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * @inheritDoc
 	 *
-	 * @param ITE_Gateway_Purchase_Request_Interface $request
+	 * @param ITE_Gateway_Purchase_Request $request
 	 */
 	public function handle( $request ) {
 
@@ -263,14 +263,14 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param ITE_Gateway_Purchase_Request_Interface $request
+	 * @param ITE_Gateway_Purchase_Request $request
 	 * @param string                                 $method_id
 	 * @param int                                    $status
 	 * @param array                                  $args
 	 *
 	 * @return int|false
 	 */
-	protected function add_transaction( ITE_Gateway_Purchase_Request_Interface $request, $method_id, $status, $args ) {
+	protected function add_transaction( ITE_Gateway_Purchase_Request $request, $method_id, $status, $args ) {
 
 		$cart = $request->get_cart();
 
@@ -286,12 +286,12 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 *
 	 * @since 1.5.0
 	 *
-	 * @param ITE_Gateway_Purchase_Request_Interface $request
+	 * @param ITE_Gateway_Purchase_Request $request
 	 * @param ITE_Cart_Product                       $cart_product
 	 *
 	 * @return array
 	 */
-	protected function generate_payment_schedule( ITE_Gateway_Purchase_Request_Interface $request, &$cart_product ) {
+	protected function generate_payment_schedule( ITE_Gateway_Purchase_Request $request, &$cart_product ) {
 
 		$cart = $request->get_cart();
 
@@ -379,11 +379,11 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 *
 	 * @sicne 1.5.0
 	 *
-	 * @param ITE_Gateway_Purchase_Request_Interface $request
+	 * @param ITE_Gateway_Purchase_Request $request
 	 *
 	 * @return array
 	 */
-	protected function generate_payment( ITE_Gateway_Purchase_Request_Interface $request ) {
+	protected function generate_payment( ITE_Gateway_Purchase_Request $request ) {
 
 		$cc = $request->get_card();
 
