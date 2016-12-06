@@ -38,6 +38,10 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 
 		$this->handlers[] = new ITE_AuthorizeNet_Cancel_Subscription_Request_Handler( $this );
 
+		if ( $this->settings()->has( 'cim' ) && $this->settings()->get( 'cim' ) ) {
+			$this->handlers[] = new ITE_AuthorizeNet_Tokenize_Request_Handler( $this );
+		}
+
 		parent::__construct();
 	}
 
@@ -162,10 +166,17 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'required' => true,
 			),
 			array(
-				'slug'    => 'evosnap-itnernational',
+				'slug'    => 'evosnap-international',
 				'type'    => 'check_box',
 				'label'   => __( 'EVOSnap International Account', 'LION' ),
 				'desc'    => __( "Mark yes if your Authorize.net payment processor is an EVOSnap International account. If you don't know what your payment processor is, contact Authorize.net.", 'LION' ),
+				'default' => false,
+			),
+			array(
+				'slug'    => 'cim',
+				'type'    => 'check_box',
+				'label'   => __( 'Enable Customer Information Manager (CIM)', 'LION' ),
+				'desc'    => __( "Enable this option if your Authorize.net account supports CIM and you'd like to support payment tokens.", 'LION' ),
 				'default' => false,
 			),
 			array(

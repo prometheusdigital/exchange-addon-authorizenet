@@ -29,6 +29,21 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		$customer     = $request->get_customer();
 		$reference_id = substr( it_exchange_create_unique_hash(), 20 );
 
+		$token = $card = null;
+
+		if ( $request->get_token() ) {
+			$token = $request->get_token();
+		} elseif ( ( $tokenize = $request->get_tokenize() ) && $this->get_gateway()->can_handle( 'tokenize' ) ) {
+			$token = $this->get_gateway()->get_handler_for( $tokenize )->handle( $tokenize );
+		} elseif ( $request->get_card() ) {
+			$card = $this->generate_payment( $request );
+		} else {
+
+			$cart->get_feedback()->add_error( __( 'Invalid payment method.', 'LION' ) );
+
+			return null;
+		}
+
 		// remove this because it screws up the product titles
 		remove_filter( 'the_title', 'wptexturize' );
 
@@ -45,7 +60,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				$total += $fee->get_total() * - 1;
 			}
 
-			$transaction_fields = array(
+			$body = array(
 				'ARBCreateSubscriptionRequest' => array(
 					'merchantAuthentication' => array(
 						'name'           => $api_username,
@@ -56,7 +71,6 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 						'paymentSchedule' => $sub_payment_schedule,
 						'amount'          => $total,
-						'payment'         => $this->generate_payment( $request ),
 						'order'           => array(
 							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 						),
@@ -69,12 +83,21 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				),
 			);
 
+			if ( $token ) {
+				$body['ARBCreateSubscriptionRequest']['subscription']['profile'] = array(
+					'customerProfileId'        => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
+					'customerPaymentProfileId' => $token->token,
+				);
+			} elseif ( $card ) {
+				$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card;
+			}
+
 			if ( $shipping = $this->generate_ship_to( $cart ) ) {
-				$transaction_fields['ARBCreateSubscriptionRequest']['transactionRequest']['shipTo'] = $shipping;
+				$body['ARBCreateSubscriptionRequest']['subscription']['shipTo'] = $shipping;
 			}
 
 		} else {
-			$transaction_fields = array(
+			$body = array(
 				'createTransactionRequest' => array(
 					'merchantAuthentication' => array(
 						'name'           => $api_username,
@@ -84,7 +107,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'transactionRequest'     => array(
 						'transactionType' => 'authCaptureTransaction',
 						'amount'          => it_exchange_get_cart_total( false, array( 'cart' => $cart ) ),
-						'payment'         => $this->generate_payment( $request ),
+						'profile'         => null,
 						'order'           => array(
 							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 						),
@@ -97,15 +120,26 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				),
 			);
 
-			if ( $shipping = $this->generate_ship_to( $cart ) ) {
-				$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
+			if ( $token ) {
+				$body['createTransactionRequest']['transactionRequest']['profile'] = array(
+					'customerProfileId' => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
+					'paymentProfile'    => array( 'paymentProfileId' => $token->token, ),
+				);
+				unset( $body['createTransactionRequest']['transactionRequest']['billTo'] );
+			} elseif ( $card ) {
+				$body['createTransactionRequest']['transactionRequest']['payment'] = $card;
+				unset( $body['createTransactionRequest']['transactionRequest']['profile'] );
 			}
 
-			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; // ecommerce
-			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; // Website
+			if ( $shipping = $this->generate_ship_to( $cart ) ) {
+				$body['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
+			}
+
+			$body['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; // ecommerce
+			$body['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; // Website
 
 			if ( $settings['authorizenet-test-mode'] ) {
-				$transaction_fields['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
+				$body['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
 					'setting' => array(
 						'settingName'  => 'testRequest',
 						'settingValue' => true
@@ -114,7 +148,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			}
 		}
 
-		$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields, $request );
+
+		$body = apply_filters( 'it_exchange_authorizenet_transaction_fields', $body, $request );
 
 		add_filter( 'the_title', 'wptexturize' );
 
@@ -122,7 +157,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
-			'body'    => json_encode( $transaction_fields ),
+			'body'    => json_encode( $body ),
 			'timeout' => 30
 		);
 
@@ -141,8 +176,10 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			if ( ! empty( $obj['messages']['message'] ) ) {
 				$error = reset( $obj['messages']['message'] );
 
-				if ( $error ) {
+				if ( $error && is_string( $error ) ) {
 					$cart->get_feedback()->add_error( $error );
+				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
+					$cart->get_feedback()->add_error( $error['text'] );
 				}
 			}
 
@@ -153,6 +190,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 		if ( $request->get_card() ) {
 			$txn_args['card'] = $request->get_card();
+		} elseif ( $token ) {
+			$txn_args['payment_token'] = $token;
 		}
 
 		if ( $sub_payment_schedule ) {
@@ -225,9 +264,9 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 * @since 1.5.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
-	 * @param string                                 $method_id
-	 * @param int                                    $status
-	 * @param array                                  $args
+	 * @param string                       $method_id
+	 * @param int                          $status
+	 * @param array                        $args
 	 *
 	 * @return int|false
 	 */
@@ -248,7 +287,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 * @since 1.5.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
-	 * @param ITE_Cart_Product                       $cart_product
+	 * @param ITE_Cart_Product             $cart_product
 	 *
 	 * @return array
 	 */
@@ -438,4 +477,19 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			'country'   => $country,
 		);
 	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function get_data_for_REST( ITE_Gateway_Purchase_Request $request ) {
+		$data = parent::get_data_for_REST( $request );
+
+		if ( $this->get_gateway()->can_handle( 'tokenize' ) ) {
+			$data['accepts'][] = 'token';
+			$data['accepts'][] = 'tokenize';
+		}
+
+		return $data;
+	}
+
 }
