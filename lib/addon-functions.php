@@ -133,35 +133,38 @@ function it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $subscrib
  *
  * @since CHANGEME
  *
- * @param integer $authorizenet_id id of Authorize.Net transaction
+ * @param integer $method_id id of Authorize.Net transaction
  * @param string $payment_status new status
  * @param string $subscriber_id from PayPal (optional)
+ * @param float  $amount
+ *
  * @return bool
 */
-function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id, $payment_status, $subscriber_id, $amount ) {
-	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $authorizenet_id );
+function it_exchange_authorizenet_addon_add_child_transaction( $method_id, $payment_status, $subscriber_id, $amount ) {
+
+	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $method_id );
+
 	if ( !empty( $transactions ) ) {
-		//this transaction DOES exist, don't try to create a new one, just update the status
-		it_exchange_authorizenet_addon_update_transaction_status( $authorizenet_id, $payment_status );		
-	} else { 
-		if ( !empty( $subscriber_id ) ) {
-			$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
-			foreach( $transactions as $transaction ) { //really only one
-				$parent_tx_id = $transaction->ID;
-				$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
-			}
-		} else {
-			$parent_tx_id = false;
-			$customer_id = false;
+		// This transaction DOES exist, don't try to create a new one, just update the status
+		it_exchange_authorizenet_addon_update_transaction_status( $method_id, $payment_status );
+	} else {
+
+		$parent = null;
+
+		$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
+
+		foreach ( $transactions as $transaction ) { // Really only one
+			$parent = $transaction;
 		}
-		
-		if ( $parent_tx_id && $customer_id ) {
-			$transaction_object = new stdClass;
-			$transaction_object->total = $amount / 100;
-			it_exchange_add_child_transaction( 'authorizenet', $authorizenet_id, $payment_status, $customer_id, $parent_tx_id, $transaction_object );
+
+		if ( $parent ) {
+
+			it_exchange_add_subscription_renewal_payment( $parent, $method_id, $payment_status, $amount );
+
 			return true;
 		}
 	}
+
 	return false;
 }
 
