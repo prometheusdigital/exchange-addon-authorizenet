@@ -45,73 +45,34 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				$total += $fee->get_total() * - 1;
 			}
 
-			if (
-				$request instanceof ITE_Gateway_Prorate_Purchase_Request &&
-				( $prorate_requests = $request->get_prorate_requests() ) &&
-				isset( $prorate_requests[ $subscription_product->get_product()->ID ] ) &&
-				( $prorate_request = $prorate_requests[ $subscription_product->get_product()->ID ] ) &&
-				$prorate_request instanceof ITE_Prorate_Subscription_Credit_Request
-			) {
-
-				$transaction_fields = array(
-					'ARBUpdateSubscriptionRequest' => array(
-						'merchantAuthentication' => array(
-							'name'           => $api_username,
-							'transactionKey' => $api_password,
-						),
-						'refId'                  => $reference_id,
-						'subscriptionId'         => $prorate_request->get_subscription()->get_transaction()->get_method_id(),
-						'subscription'           => array(
-							'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-							'paymentSchedule' => $sub_payment_schedule,
-							'amount'          => $total,
-							'trialAmount'     => 0.00,
-							'payment'         => $this->generate_payment( $request ),
-							'order'           => array(
-								'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-							),
-							'customer'        => array(
-								'id'    => $customer->ID,
-								'email' => $customer->get_email(),
-							),
-							'billTo'          => $this->generate_bill_to( $cart ),
-						),
+			$transaction_fields = array(
+				'ARBCreateSubscriptionRequest' => array(
+					'merchantAuthentication' => array(
+						'name'           => $api_username,
+						'transactionKey' => $api_password,
 					),
-				);
-
-				if ( $shipping = $this->generate_ship_to( $cart ) ) {
-					$transaction_fields['ARBUpdateSubscriptionRequest']['transactionRequest']['shipTo'] = $shipping;
-				}
-			} else {
-				$transaction_fields = array(
-					'ARBCreateSubscriptionRequest' => array(
-						'merchantAuthentication' => array(
-							'name'           => $api_username,
-							'transactionKey' => $api_password,
+					'refId'                  => $reference_id,
+					'subscription'           => array(
+						'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
+						'paymentSchedule' => $sub_payment_schedule,
+						'amount'          => $total,
+						'payment'         => $this->generate_payment( $request ),
+						'order'           => array(
+							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 						),
-						'refId'                  => $reference_id,
-						'subscription'           => array(
-							'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-							'paymentSchedule' => $sub_payment_schedule,
-							'amount'          => $total,
-							'trialAmount'     => 0.00,
-							'payment'         => $this->generate_payment( $request ),
-							'order'           => array(
-								'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-							),
-							'customer'        => array(
-								'id'    => $customer->ID,
-								'email' => $customer->get_email()
-							),
-							'billTo'          => $this->generate_bill_to( $cart ),
+						'customer'        => array(
+							'id'    => $customer->ID,
+							'email' => $customer->get_email()
 						),
+						'billTo'          => $this->generate_bill_to( $cart ),
 					),
-				);
+				),
+			);
 
-				if ( $shipping = $this->generate_ship_to( $cart ) ) {
-					$transaction_fields['ARBCreateSubscriptionRequest']['transactionRequest']['shipTo'] = $shipping;
-				}
+			if ( $shipping = $this->generate_ship_to( $cart ) ) {
+				$transaction_fields['ARBCreateSubscriptionRequest']['transactionRequest']['shipTo'] = $shipping;
 			}
+
 		} else {
 			$transaction_fields = array(
 				'createTransactionRequest' => array(
@@ -140,8 +101,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
 			}
 
-			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; //ecommerce
-			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; //Website
+			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; // ecommerce
+			$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; // Website
 
 			if ( $settings['authorizenet-test-mode'] ) {
 				$transaction_fields['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
@@ -310,10 +271,6 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		$interval       = $product->get_feature( 'recurring-payments', array( 'setting' => 'interval' ) );
 		$interval_count = $product->get_feature( 'recurring-payments', array( 'setting' => 'interval-count' ) );
 
-		$trial_enabled    = $product->get_feature( 'recurring-payments', array( 'setting' => 'trial-enabled' ) );
-		$t_interval       = $product->get_feature( 'recurring-payments', array( 'setting' => 'trial-interval' ) );
-		$t_interval_count = $product->get_feature( 'recurring-payments', array( 'setting' => 'trial-interval-count' ) );
-
 		switch ( $interval ) {
 			case 'year':
 				$duration = 12; //The max you can do in Authorize.Net is 12 months (1 year)
@@ -335,43 +292,69 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		}
 
 		$duration   = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_duration', $duration, $bc, $request );
-		$t_duration = 0;
+		$start_date = time();
 
-		if ( $trial_enabled && ! $t_duration && function_exists( 'it_exchange_is_customer_eligible_for_trial' ) ) {
+		$trial_profile = it_exchange_get_recurring_product_trial_profile( $product );
+
+		if ( $trial_profile ) {
 
 			$allow_trial = it_exchange_is_customer_eligible_for_trial( $product, $cart->get_customer() );
 			$allow_trial = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_allow_trial', $allow_trial, $product['product_id'], $request );
 
-			// Yes, this is only supporting trial intervals that match the regular intervals.
-			if ( $allow_trial && 0 < $t_interval_count ) {
-				switch ( $t_interval ) {
-					case 'year':
-						$t_duration = 12; //The max you can do in Authorize.Net is 12 months (1 year)
-						break;
-					case 'week':
-						$t_duration = $interval_count * 7;
-						break;
-					case 'day':
-					case 'month':
-					default:
-						$t_duration = $interval_count;
-						break;
-				}
-
-				$t_duration = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_trial_duration', $t_duration, $bc, $request );
+			if ( $allow_trial ) {
+				$start_date += $trial_profile->get_interval_seconds();
 			}
 		}
+
+		if ( $request instanceof ITE_Gateway_Prorate_Purchase_Request && ( $prorates = $request->get_prorate_requests() ) ) {
+			if ( $end_at = $this->get_trial_end_at_for_prorate( $request ) ) {
+				$start_date = $end_at;
+			}
+		}
+
+		// Set the start date. Time Zone is set to Authorize.Net's Server timezone which is Mountain.
+		$start_date = new DateTime( "@{$start_date}", new DateTimeZone( 'America/Denver' ) );
 
 		return array(
 			'interval'         => array(
 				'length' => $duration,
 				'unit'   => $unit,
 			),
-			'startDate'        => date( 'Y-m-d', current_time( 'timestamp' ) ),
+			'startDate'        => $start_date->format( 'Y-m-d' ),
 			// To submit a subscription with no end date (an ongoing subscription), this field must be submitted with a value of “9999.”
 			'totalOccurrences' => 9999,
-			'trialOccurrences' => $t_duration,
 		);
+	}
+
+	/**
+	 * Get the trial end at time for a prorate purchase request.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param ITE_Gateway_Prorate_Purchase_Request $request
+	 *
+	 * @return int
+	 */
+	protected function get_trial_end_at_for_prorate( ITE_Gateway_Prorate_Purchase_Request $request ) {
+
+		/** @var ITE_Cart_Product $cart_product */
+		$cart_product = $request->get_cart()->get_items( 'product' )->filter( function ( ITE_Cart_Product $product ) {
+			return $product->get_product()->has_feature( 'recurring-payments', array( 'setting' => 'auto-renew' ) );
+		} )->first();
+
+		if ( $cart_product && $cart_product->get_product() ) {
+
+			$product = $cart_product->get_product();
+
+			if ( isset( $prorates[ $product->ID ] ) && $prorates[ $product->ID ]->get_credit_type() === 'days' ) {
+
+				if ( $prorates[ $product->ID ]->get_free_days() ) {
+					return time() + ( $prorates[ $product->ID ]->get_free_days() * DAY_IN_SECONDS );
+				}
+			}
+		}
+
+		return 0;
 	}
 
 	/**
