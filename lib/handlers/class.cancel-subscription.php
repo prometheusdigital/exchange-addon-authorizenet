@@ -48,7 +48,7 @@ class ITE_AuthorizeNet_Cancel_Subscription_Request_Handler implements ITE_Gatewa
 		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
 		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 
-		$request = array(
+		$body = array(
 			'ARBCancelSubscriptionRequest' => array(
 				'merchantAuthentication' => array(
 					'name'           => $api_username,
@@ -62,7 +62,7 @@ class ITE_AuthorizeNet_Cancel_Subscription_Request_Handler implements ITE_Gatewa
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
-			'body'    => json_encode( $request ),
+			'body'    => json_encode( $body ),
 		);
 
 		// Make sure we update the subscription before the webhook handler does.

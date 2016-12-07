@@ -60,7 +60,11 @@ add_filter( 'it_exchange_authorizenet_transaction_can_be_refunded', 'it_exchange
  */
 function it_exchange_authorizenet_enqueue_accept_js() {
 
-	if ( ! wp_script_is( 'it-exchange-rest', 'done' ) ) {
+	if (
+		! wp_script_is( 'it-exchange-rest', 'done' ) &&
+		! it_exchange_is_page( 'product' ) &&
+		! it_exchange_is_page( 'checkout' )
+	) {
 		return;
 	}
 
