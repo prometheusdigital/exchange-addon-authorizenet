@@ -166,6 +166,21 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'required' => true,
 			),
 			array(
+				'slug'    => 'acceptjs',
+				'type'    => 'check_box',
+				'label'   => __( 'Enable Accept.js support.', 'LION' ),
+				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
+				'default' => false,
+			),
+			array(
+				'slug'     => 'public-key',
+				'type'     => 'text_box',
+				'label'    => __( 'Public Client Key', 'LION' ),
+				'tooltip'  => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if'  => array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
+				'required' => true,
+			),
+			array(
 				'slug'    => 'evosnap-international',
 				'type'    => 'check_box',
 				'label'   => __( 'EVOSnap International Account', 'LION' ),
@@ -178,20 +193,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'label'   => __( 'Enable Customer Information Manager (CIM)', 'LION' ),
 				'desc'    => __( "Enable this option if your Authorize.net account supports CIM and you'd like to support payment tokens.", 'LION' ),
 				'default' => false,
-			),
-			array(
-				'slug'    => 'acceptjs',
-				'type'    => 'check_box',
-				'label'   => __( 'Enable Accept.js support.', 'LION' ),
-				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
-				'default' => false,
-			),
-			array(
-				'slug'    => 'public-key',
-				'type'    => 'text_box',
-				'label'   => __( 'Public Client Key', 'LION' ),
-				'tooltip' => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
-				'show_if' => array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
 			),
 			array(
 				'slug' => 'step2',
@@ -257,14 +258,15 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 			),
 			array(
-				'slug'    => 'sandbox-public-key',
-				'type'    => 'text_box',
-				'label'   => __( 'Sandbox Public Client Key', 'LION' ),
-				'tooltip' => __( 'Your Sandbox Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
-				'show_if' => array(
+				'slug'     => 'sandbox-public-key',
+				'type'     => 'text_box',
+				'label'    => __( 'Sandbox Public Client Key', 'LION' ),
+				'tooltip'  => __( 'Your Sandbox Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if'  => array(
 					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
 					array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 				),
+				'required' => true,
 			),
 		);
 
