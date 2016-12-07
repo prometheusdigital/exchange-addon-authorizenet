@@ -371,7 +371,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 		
 			var deferred = jQuery.Deferred();
 			
-			var fn = function() {
+			window.itExchangeAcceptJsTokenize = function() {
 				
 				var cardTransform = {
 					number: 'cardNumber',
@@ -413,7 +413,9 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 					secureData.cardData = cardData;				
 					secureData.authData = authData;
 					
-					Accept.dispatchData( secureData, function( response ) {
+					Accept.dispatchData( secureData, 'itExchangeAcceptJSCallback' );
+					
+					window.itExchangeAcceptJSCallback = function( response ) {
 						if (response.messages.resultCode === 'Error') {
 							var error = '';
 							
@@ -425,21 +427,13 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 					    } else {
 					        deferred.resolve( response.opaqueData.dataValue );
 					    }
-					} );
+					}
 				} else {
 					deferred.reject( 'Unknown token request type.' );
 				}
 			};
 			
-			if ( ! window.hasOwnProperty( 'Accept' ) ) {
-				jQuery.ajax( {
-					url: '$script',
-					dataType: 'script',
-					scriptCharset: "UTF-8",
-  				} );
-			} else {
-				fn();
-			}
+			window.itExchangeAcceptJsTokenize();
 			
 			return deferred.promise();
 		}
