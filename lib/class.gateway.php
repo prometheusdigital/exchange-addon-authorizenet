@@ -180,6 +180,20 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'default' => false,
 			),
 			array(
+				'slug'    => 'acceptjs',
+				'type'    => 'check_box',
+				'label'   => __( 'Enable Accept.js support.', 'LION' ),
+				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
+				'default' => false,
+			),
+			array(
+				'slug'    => 'public-key',
+				'type'    => 'text_box',
+				'label'   => __( 'Public Client Key', 'LION' ),
+				'tooltip' => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if' => array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
+			),
+			array(
 				'slug' => 'step2',
 				'type' => 'html',
 				'html' => '<h4>' . __( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ) . '</h4><p>' .
@@ -220,7 +234,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			array(
 				'slug'     => 'authorizenet-sandbox-api-login-id',
 				'type'     => 'text_box',
-				'label'    => __( 'API Login ID', 'LION' ),
+				'label'    => __( 'Sandbox API Login ID', 'LION' ),
 				'tooltip'  => __( 'Your Sandbox API Login ID can be found under the Setting Menu on your Merchant Interface (in your Sandbox Authorize.net account).', 'LION' ),
 				'required' => true,
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
@@ -228,7 +242,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			array(
 				'slug'     => 'authorizenet-sandbox-transaction-key',
 				'type'     => 'text_box',
-				'label'    => __( 'Transaction Key', 'LION' ),
+				'label'    => __( 'Sandbox Transaction Key', 'LION' ),
 				'tooltip'  => __( 'Your Sandbox Transaction Key can be found under the Setting Menu on your Merchant Interface (in your Sandbox Authorize.net account).', 'LION' ),
 				'required' => true,
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
@@ -236,11 +250,21 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			array(
 				'slug'     => 'authorizenet-sandbox-md5-hash',
 				'type'     => 'text_box',
-				'label'    => __( 'MD5 Hash Value', 'LION' ),
+				'label'    => __( 'Sandbox MD5 Hash Value', 'LION' ),
 				'tooltip'  => __( 'The MD5 Hash Value should match the value you set in your Sandbox Authorize.Net account at Account -> MD5-Hash.', 'LION' ),
 				'desc'     => __( 'The hash can be up to 20 characters long, including upper- and lower-case letters, numbers, spaces, and punctuation. More complex values will be more secure.', 'LION' ),
 				'required' => true,
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
+			),
+			array(
+				'slug'    => 'sandbox-public-key',
+				'type'    => 'text_box',
+				'label'   => __( 'Sandbox Public Client Key', 'LION' ),
+				'tooltip' => __( 'Your Sandbox Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if' => array(
+					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
+					array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
+				),
 			),
 		);
 

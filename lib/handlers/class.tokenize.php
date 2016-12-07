@@ -9,7 +9,7 @@
 /**
  * Class ITE_AuthorizeNet_Tokenize_Request_Handler
  */
-class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_Handler {
+class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_Handler, ITE_Gateway_JS_Tokenize_Handler {
 
 	/** @var ITE_Gateway */
 	private $gateway;
@@ -208,10 +208,20 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			$attr['redacted'] = $source->get_redacted_number();
 
 			$token = ITE_Payment_Token_Card::create( $attr );
+
+			if ( $token ) {
+				$token->set_expiration_month( $source->get_expiration_month() );
+				$token->set_expiration_year( $source->get_expiration_year() );
+			}
+
 		} elseif ( $source instanceof ITE_Gateway_Bank_Account ) {
 			$attr['redacted'] = $source->get_redacted_account_number();
 
 			$token = ITE_Payment_Token_Bank_Account::create( $attr );
+
+			if ( $token ) {
+				$token->set_account_type( $source->get_type() );
+			}
 		}
 
 		if ( $token && $request->should_set_as_primary() ) {
@@ -338,6 +348,102 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			'zip'       => preg_replace( '/[^A-Za-z0-9\-]/', '', $location['zip'] ),
 			'country'   => $country,
 		);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function get_js() {
+
+		if ( $this->gateway->is_sandbox_mode() ) {
+			$public_key = esc_js( $this->gateway->settings()->get( 'sandbox-public-key' ) );
+			$login_id   = esc_js( $this->gateway->settings()->get( 'authorizenet-sandbox-api-login-id' ) );
+			$script     = esc_js( 'https://jstest.authorize.net/v1/Accept.js' );
+		} else {
+			$public_key = esc_js( $this->gateway->settings()->get( 'public-key' ) );
+			$script     = esc_js( 'https://js.authorize.net/v1/Accept.js' );
+			$login_id   = esc_js( $this->gateway->settings()->get( 'authorizenet-api-login-id' ) );
+		}
+
+		return <<<JS
+		
+		function( type, tokenize ) {
+		
+			var deferred = jQuery.Deferred();
+			
+			var fn = function() {
+				
+				var cardTransform = {
+					number: 'cardNumber',
+					cvc: 'cardCode',
+					year: 'year',
+					month: 'month',
+				};
+				
+				var secureData = {}, authData = {}, cardData = {};
+				
+				authData.clientKey  = '$public_key';
+				authData.apiLoginID = '$login_id';
+				
+				if ( tokenize.name ) {
+					cardData.fullName = tokenize.name;
+				}
+			
+				if ( type === 'card' ) {
+					for ( var from in cardTransform ) {
+						if ( ! cardTransform.hasOwnProperty( from ) ) {
+							continue;
+						}
+						
+						var to = cardTransform[ from ];
+						
+						if ( tokenize[from] ) {
+							cardData[to] = tokenize[from];
+						} else {
+							deferred.reject( 'Missing property ' + from );
+							
+							return;
+						}
+					}
+					
+					if ( cardData.year > 2000 ) {
+						cardData.year = cardData.year - 2000;
+					}
+					
+					secureData.cardData = cardData;				
+					secureData.authData = authData;
+					
+					Accept.dispatchData( secureData, function( response ) {
+						if (response.messages.resultCode === 'Error') {
+							var error = '';
+							
+					        for (var i = 0; i < response.messages.message.length; i++) {
+					            error += response.messages.message[i].text + ' ';
+					        }
+					        
+					        deferred.reject( error );
+					    } else {
+					        deferred.resolve( response.opaqueData.dataValue );
+					    }
+					} );
+				} else {
+					deferred.reject( 'Unknown token request type.' );
+				}
+			};
+			
+			if ( ! window.hasOwnProperty( 'Accept' ) ) {
+				jQuery.ajax( {
+					url: '$script',
+					dataType: 'script',
+					scriptCharset: "UTF-8",
+  				} );
+			} else {
+				fn();
+			}
+			
+			return deferred.promise();
+		}
+JS;
 	}
 
 	/**
