@@ -479,19 +479,4 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			'country'   => $country,
 		);
 	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function get_data_for_REST( ITE_Gateway_Purchase_Request $request ) {
-		$data = parent::get_data_for_REST( $request );
-
-		if ( $this->get_gateway()->can_handle( 'tokenize' ) ) {
-			$data['accepts'][] = 'token';
-			$data['accepts'][] = 'tokenize';
-		}
-
-		return $data;
-	}
-
 }
