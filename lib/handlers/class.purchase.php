@@ -88,6 +88,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'customerProfileId'        => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
 					'customerPaymentProfileId' => $token->token,
 				);
+				unset( $body['ARBCreateSubscriptionRequest']['subscription']['billTo'] );
 			} elseif ( $card ) {
 				$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card;
 			}
