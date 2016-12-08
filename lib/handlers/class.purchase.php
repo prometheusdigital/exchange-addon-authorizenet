@@ -54,7 +54,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 			$total = $cart->get_total();
 			$fee   = $subscription_product->get_line_items()->with_only( 'fee' )
-			                              ->having_param( 'is_free_trial', 'is_prorate_days' )->first();
+			                    ->filter( function ( ITE_Fee_Line_Item $fee ) { return ! $fee->is_recurring(); } )
+			                    ->first();
 
 			if ( $fee ) {
 				$total += $fee->get_total() * - 1;
