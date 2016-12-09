@@ -70,8 +70,8 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				case 2:
 				case 3:
 
-					if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_SUSPENDED ) {
-						$subscription->set_status( IT_Exchange_Subscription::STATUS_SUSPENDED );
+					if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_PAYMENT_FAILED ) {
+						$subscription->set_status( IT_Exchange_Subscription::STATUS_PAYMENT_FAILED );
 					}
 
 					break;

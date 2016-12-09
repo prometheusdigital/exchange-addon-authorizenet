@@ -65,7 +65,10 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
 		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 
-		if ( $subscription->is_status( IT_Exchange_Subscription::STATUS_SUSPENDED ) && $cost = $this->calculate_cost_for_days_missed( $subscription ) ) {
+		if (
+			$subscription->is_status( IT_Exchange_Subscription::STATUS_PAYMENT_FAILED ) &&
+			$cost = $this->calculate_cost_for_days_missed( $subscription )
+		) {
 
 			$cart = ITE_Cart::create(
 				new ITE_Line_Item_Cached_Session_Repository(
@@ -143,7 +146,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
-		if ( $subscription->is_status( IT_Exchange_Subscription::STATUS_SUSPENDED ) ) {
+		if ( $subscription->is_status( IT_Exchange_Subscription::STATUS_PAYMENT_FAILED ) ) {
 			$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
 		}
 
