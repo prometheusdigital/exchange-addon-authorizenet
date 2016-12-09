@@ -54,8 +54,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 			$total = $cart->get_total();
 			$fee   = $subscription_product->get_line_items()->with_only( 'fee' )
-			                    ->filter( function ( ITE_Fee_Line_Item $fee ) { return ! $fee->is_recurring(); } )
-			                    ->first();
+			                              ->filter( function ( ITE_Fee_Line_Item $fee ) { return ! $fee->is_recurring(); } )
+			                              ->first();
 
 			if ( $fee ) {
 				$total += $fee->get_total() * - 1;
@@ -201,8 +201,15 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			if ( ! empty( $obj['subscriptionId'] ) ) {
 				$txn_id = $this->add_transaction( $request, $reference_id, 1, $txn_args );
 
-				it_exchange_recurring_payments_addon_update_transaction_subscription_id( $txn_id, $obj['subscriptionId'] );
-				it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $obj['subscriptionId'] );
+				if ( function_exists( 'it_exchange_get_transaction_subscriptions' ) ) {
+					$subscriptions = it_exchange_get_transaction_subscriptions( it_exchange_get_transaction( $txn_id ) );
+
+					// should be only one
+					foreach ( $subscriptions as $subscription ) {
+						$subscription->set_subscriber_id( $obj['subscriptionId'] );
+						$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
+					}
+				}
 			} else {
 				$error = '';
 				if ( ! empty( $transaction['messages'] ) ) {
