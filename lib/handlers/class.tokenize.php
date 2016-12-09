@@ -156,6 +156,49 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	}
 
 	/**
+	 * Get details about a payment profile.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param int $customer_profile_id
+	 * @param int $payment_profile_id
+	 *
+	 * @return array
+	 */
+	protected function get_payment_profile_details( $customer_profile_id, $payment_profile_id ) {
+
+		$body = array(
+			'getCustomerPaymentProfileRequest' => array(
+				'merchantAuthentication'   => $this->get_merchant_auth(),
+				'customerProfileId'        => $customer_profile_id,
+				'customerPaymentProfileId' => $payment_profile_id,
+				'unmaskExpirationDate'     => true,
+			),
+		);
+
+		$query = array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+			),
+			'body'    => json_encode( $body ),
+			'timeout' => 30
+		);
+
+		$response = wp_remote_post( $this->get_api_url(), $query );
+
+		if ( is_wp_error( $response ) ) {
+			throw new UnexpectedValueException( $response->get_error_message() );
+		}
+
+		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$response = json_decode( $body, true );
+
+		$this->check_for_errors( $response );
+
+		return $response['paymentProfile'];
+	}
+
+	/**
 	 * Check for errors in the Auth.Net Response.
 	 *
 	 * @since 1.5.0
@@ -203,7 +246,28 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 		);
 
 		if ( is_string( $source ) ) {
+
+			$details = $this->get_payment_profile_details(
+				it_exchange_authorizenet_get_customer_profile_id( $request->get_customer()->get_ID() ),
+				$profile_id
+			);
+
+			$attr['redacted'] = substr( $details['payment']['creditCard']['cardNumber'], - 4 );
+
 			$token = ITE_Payment_Token_Card::create( $attr );
+
+			$expires = $details['payment']['creditCard']['expirationDate'];
+
+			list( $year, $month ) = explode( '-', $expires );
+
+			if ( $year ) {
+				$token->set_expiration_year( $year );
+			}
+
+			if ( $month ) {
+				$token->set_expiration_month( $month );
+			}
+
 		} elseif ( $source instanceof ITE_Gateway_Card ) {
 			$attr['redacted'] = $source->get_redacted_number();
 
