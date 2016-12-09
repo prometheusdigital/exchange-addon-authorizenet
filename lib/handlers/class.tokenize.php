@@ -353,7 +353,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * @inheritDoc
 	 */
-	public function get_js() {
+	public function get_tokenize_js_function() {
 
 		if ( $this->gateway->is_sandbox_mode() ) {
 			$public_key = esc_js( $this->gateway->settings()->get( 'sandbox-public-key' ) );
