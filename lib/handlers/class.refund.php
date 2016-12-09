@@ -44,25 +44,35 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
 		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 
-		$id = it_exchange_create_unique_hash();
+		$card_number = '';
+		$source      = $transaction->get_payment_source();
 
-		$request = array(
+		if ( $source instanceof ITE_Gateway_Card ) {
+			$card_number = $source->get_redacted_number();
+		} elseif ( $source instanceof ITE_Payment_Token ) {
+			$card_number = $source->redacted;
+		}
+
+		if ( ! $card_number ) {
+			throw new InvalidArgumentException( 'Transaction unable to be refunded.' );
+		}
+
+		$body = array(
 			'createTransactionRequest' => array(
 				'merchantAuthentication' => array(
 					'name'           => $api_username,
 					'transactionKey' => $api_password,
 				),
-				'refId'                  => $id,
 				'transactionRequest'     => array(
 					'transactionType' => 'refundTransaction',
 					'amount'          => $request->get_amount(),
-					'refTransId'      => $transaction->get_method_id(),
 					'payment'         => array(
 						'creditCard' => array(
-							'cardNumber'     => $transaction->get_card()->get_redacted_number(),
+							'cardNumber'     => $card_number,
 							'expirationDate' => 'XXXX',
 						)
-					)
+					),
+					'refTransId'      => $transaction->get_method_id(),
 				)
 			)
 		);
@@ -71,31 +81,35 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 			'headers' => array(
 				'Content-Type' => 'application/json',
 			),
-			'body'    => json_encode( $request ),
+			'body'    => json_encode( $body ),
 		);
 
 		// Make sure we update the subscription before the webhook handler does.
 		$response = wp_remote_post( $api_url, $query );
 
-		if ( ! is_wp_error( $response ) ) {
-			$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
-			$obj  = json_decode( $body, true );
+		if ( is_wp_error( $response ) ) {
+			throw new UnexpectedValueException( $response->get_error_message() );
+		}
 
-			if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
-				if ( ! empty( $obj['messages']['message'] ) ) {
-					$error = reset( $obj['messages']['message'] );
+		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$response = json_decode( $body, true );
 
+		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
+			if ( ! empty( $response['messages']['message'] ) ) {
+				$error = reset( $response['messages']['message'] );
+
+				if ( $error && is_string( $error ) ) {
 					throw new UnexpectedValueException( $error );
+				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
+					throw new UnexpectedValueException( $error['text'] );
 				}
 			}
-		} else {
-			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
 		$refund = ITE_Refund::create( array(
 			'transaction' => $transaction,
 			'amount'      => $request->get_amount(),
-			'gateway_id'  => $id,
+			'gateway_id'  => $response['transactionResponse']['transId'],
 			'reason'      => $request->get_reason(),
 			'issued_by'   => $request->issued_by(),
 		) );

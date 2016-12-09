@@ -39,7 +39,13 @@ function it_exchange_authorizenet_transaction_can_be_refunded( $eligible, IT_Exc
 		return $eligible;
 	}
 
-	if ( ! $transaction->get_card() || ! $transaction->get_card()->get_redacted_number() ) {
+	$source = $transaction->get_payment_source();
+
+	if ( ! $source instanceof ITE_Gateway_Card && ! $source instanceof ITE_Payment_Token ) {
+		return false;
+	}
+
+	if ( $source instanceof ITE_Gateway_Card && ! $source->get_redacted_number() ) {
 		return false;
 	}
 
