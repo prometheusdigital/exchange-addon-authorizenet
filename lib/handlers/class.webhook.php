@@ -70,8 +70,11 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				case 2:
 				case 3:
 
-					if ( $subscription->get_status() !== IT_Exchange_Subscription::STATUS_PAYMENT_FAILED ) {
-						$subscription->set_status( IT_Exchange_Subscription::STATUS_PAYMENT_FAILED );
+					// Auth.net only allows one failed retry before cancelling
+					if ( $subscription->is_status( $subscription::STATUS_PAYMENT_FAILED ) ) {
+						$subscription->set_status( $subscription::STATUS_CANCELLED );
+					} else {
+						$subscription->set_status( $subscription::STATUS_PAYMENT_FAILED );
 					}
 
 					break;

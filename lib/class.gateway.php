@@ -40,6 +40,8 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 
 		if ( $this->settings()->has( 'cim' ) && $this->settings()->get( 'cim' ) ) {
 			$this->handlers[] = new ITE_AuthorizeNet_Tokenize_Request_Handler( $this );
+			$this->handlers[] = new ITE_AuthorizeNet_Pause_Subscription_Handler();
+			$this->handlers[] = new ITE_AuthorizeNet_Resume_Subscription_Handler();
 		}
 
 		parent::__construct();

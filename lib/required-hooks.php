@@ -14,6 +14,8 @@ add_action( 'it_exchange_register_gateways', function ( ITE_Gateways $gateways )
 	require_once dirname( __FILE__ ) . '/handlers/class.webhook.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.refund.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.update-subscription-payment-method.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.pause-subscription.php';
+	require_once dirname( __FILE__ ) . '/handlers/class.resume-subscription.php';
 	require_once dirname( __FILE__ ) . '/handlers/class.cancel-subscription.php';
 
 	$gateways::register( new ITE_AuthorizeNet_Gateway() );
@@ -58,6 +60,37 @@ function it_exchange_authorizenet_transaction_can_be_refunded( $eligible, IT_Exc
 }
 
 add_filter( 'it_exchange_authorizenet_transaction_can_be_refunded', 'it_exchange_authorizenet_transaction_can_be_refunded', 10, 2 );
+
+/**
+ * Can a subscription be paused.
+ *
+ * @since 1.5.0
+ *
+ * @param bool                     $can
+ * @param IT_Exchange_Subscription $subscription
+ *
+ * @return bool
+ */
+function it_exchange_authorizenet_subscription_can_be_paused( $can, IT_Exchange_Subscription $subscription ) {
+
+	if ( ! $can ) {
+		return $can;
+	}
+
+	$gateway = $subscription->get_transaction()->get_gateway();
+
+	if ( ! $gateway || $gateway->get_slug() !== 'authorizenet' ) {
+		return $can;
+	}
+
+	if ( ! $subscription->get_payment_token() ) {
+		return false;
+	}
+
+	return true;
+}
+
+add_filter( 'it_exchange_subscription_can_be_paused', 'it_exchange_authorizenet_subscription_can_be_paused', 10, 2 );
 
 /**
  * Enqueue Accept.JS
