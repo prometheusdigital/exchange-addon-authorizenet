@@ -24,10 +24,10 @@ class ITE_AuthorizeNet_Resume_Subscription_Handler implements ITE_Gateway_Reques
 	 */
 	public function handle( $request ) {
 
-		$subscription = $request->get_subscription();
-		$transaction  = $subscription->get_transaction();
+		$s = $request->get_subscription();
+		$transaction  = $s->get_transaction();
 
-		if ( ! $subscription->get_payment_token() ) {
+		if ( ! $s->get_payment_token() || ! $s->get_expiry_date() ) {
 			return false;
 		}
 
@@ -43,12 +43,18 @@ class ITE_AuthorizeNet_Resume_Subscription_Handler implements ITE_Gateway_Reques
 		$purchase_handler = $this->gateway->get_handler_by_request_name( 'purchase' );
 		$purchase_request = $this->request_factory->make( 'purchase', array(
 			'cart'     => $cart,
-			'token'    => $subscription->get_payment_token(),
+			'token'    => $s->get_payment_token(),
 			'nonce'    => $purchase_handler->get_nonce(),
 			'child_of' => $transaction,
 		) );
 
+		add_filter( 'it_exchange_authorizenet_process_transaction_subscription_start_date', $fn = function () use ( $s ) {
+			return $s->get_expiry_date()->getTimestamp();
+		} );
+
 		$transaction = $purchase_handler->handle( $purchase_request );
+
+		remove_filter( 'it_exchange_authorizenet_process_transaction_subscription_start_date', $fn );
 
 		if ( $transaction ) {
 			return true;

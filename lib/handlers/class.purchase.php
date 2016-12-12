@@ -151,7 +151,6 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			}
 		}
 
-
 		$body = apply_filters( 'it_exchange_authorizenet_transaction_fields', $body, $request );
 
 		add_filter( 'the_title', 'wptexturize' );
@@ -360,6 +359,16 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				$start_date = $end_at;
 			}
 		}
+
+		/**
+		 * Filter the start date for the subscription.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param int                          $start_date
+		 * @param ITE_Gateway_Purchase_Request $request
+		 */
+		$start_date = apply_filters( 'it_exchange_authorizenet_process_transaction_subscription_start_date', $start_date, $request );
 
 		// Set the start date. Time Zone is set to Authorize.Net's Server timezone which is Mountain.
 		$start_date = new DateTime( "@{$start_date}", new DateTimeZone( 'America/Denver' ) );
