@@ -42,19 +42,15 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				return;
 			}
 
-			$subscriber_id = ! empty( $webhook['x_subscription_id'] ) ? $webhook['x_subscription_id'] : false;
-			$transactions  = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
-
-			foreach ( $transactions as $transaction ) {
-				try {
-					$subscription = it_exchange_get_subscription_by_transaction( $transaction );
-					break;
-				} catch ( Exception $e ) {
-					return;
-				}
+			if ( ! empty( $webhook['x_subscription_id'] ) ) {
+				$subscriber_id = $webhook['x_subscription_id'];
+			} else {
+				return;
 			}
 
-			if ( ! isset( $subscription ) ) {
+			$subscription = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $subscriber_id );
+
+			if ( ! $subscription ) {
 				return;
 			}
 
