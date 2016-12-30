@@ -243,6 +243,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			'customer' => $request->get_customer()->get_ID(),
 			'token'    => $profile_id,
 			'label'    => $request->get_label(),
+			'mode'     => $this->get_gateway()->is_sandbox_mode() ? 'sandbox' : 'live',
 		);
 
 		if ( is_string( $source ) ) {
