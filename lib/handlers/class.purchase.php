@@ -347,7 +347,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		if ( $trial_profile ) {
 
 			$allow_trial = it_exchange_is_customer_eligible_for_trial( $product, $cart->get_customer() );
-			$allow_trial = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_allow_trial', $allow_trial, $product['product_id'], $request );
+			$allow_trial = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_allow_trial', $allow_trial, $product->get_ID(), $request );
 
 			if ( $allow_trial ) {
 				$start_date += $trial_profile->get_interval_seconds();
