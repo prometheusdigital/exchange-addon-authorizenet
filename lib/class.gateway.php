@@ -308,7 +308,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 						/** @var $detail IT_Exchange_Recurring_Profile */
 						switch ( $detail->get_interval_type() ) {
 							case IT_Exchange_Recurring_Profile::TYPE_DAY:
-								return $detail->get_interval_count() <= 365;
+								return $detail->get_interval_count() >= 7 && $detail->get_interval_count() <= 365;
 							case IT_Exchange_Recurring_Profile::TYPE_WEEK:
 								return $detail->get_interval_count() <= 52;
 							case IT_Exchange_Recurring_Profile::TYPE_MONTH:
