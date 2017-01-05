@@ -20,10 +20,10 @@ function it_exchange_authorizenet_get_customer_profile_id( $customer_id, $mode =
 	$gateway = ITE_Gateways::get( 'authorizenet' );
 
 	if ( ! $mode ) {
-		$mode = $gateway->is_sandbox_mode() ? IT_Exchange_Transaction::P_MODE_SANDBOX : IT_Exchange_Transaction::P_MODE_LIVE;
+		$mode = $gateway->is_sandbox_mode() ? ITE_Const::P_MODE_SANDBOX : ITE_Const::P_MODE_LIVE;
 	}
 
-	$suffix = $mode === IT_Exchange_Transaction::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
+	$suffix = $mode === ITE_Const::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
 
 	return get_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $suffix, true );
 }
@@ -44,10 +44,10 @@ function it_exchange_authorizenet_set_customer_profile_id( $customer_id, $auth_n
 	$gateway = ITE_Gateways::get( 'authorizenet' );
 
 	if ( ! $mode ) {
-		$mode = $gateway->is_sandbox_mode() ? IT_Exchange_Transaction::P_MODE_SANDBOX : IT_Exchange_Transaction::P_MODE_LIVE;
+		$mode = $gateway->is_sandbox_mode() ? ITE_Const::P_MODE_SANDBOX : ITE_Const::P_MODE_LIVE;
 	}
 
-	$suffix = $mode === IT_Exchange_Transaction::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
+	$suffix = $mode === ITE_Const::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
 
 	return (booL) update_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $suffix, $auth_net_id );
 }
