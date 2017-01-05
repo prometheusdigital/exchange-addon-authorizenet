@@ -27,7 +27,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 		$factory = new ITE_Gateway_Request_Factory();
 
 		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, $factory );
-		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler();
+		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler( $this );
 		$this->handlers[] = new ITE_AuthorizeNet_Refund_Request_Handler( $this );
 
 		if ( class_exists( 'ITE_Daily_Price_Calculator' ) ) {
@@ -43,6 +43,12 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			$this->handlers[] = new ITE_AuthorizeNet_Pause_Subscription_Handler();
 			$this->handlers[] = new ITE_AuthorizeNet_Resume_Subscription_Handler();
 		}
+
+		add_action(
+			"it_exchange_validate_admin_form_settings_for_{$this->get_settings_name()}",
+			array( $this, 'create_webhooks' ),
+			10, 2
+		);
 
 		parent::__construct();
 	}
@@ -106,7 +112,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			'authorizenet-api-md5-hash',
 			'evosnap-international',
 			'step2',
-			'step3',
 			'authorizenet-purchase-button-label'
 		);
 
@@ -168,6 +173,13 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'required' => true,
 			),
 			array(
+				'slug'     => 'signature',
+				'type'     => 'text_box',
+				'label'    => __( 'Signature Key', 'LION' ),
+				'tooltip'  => __( 'Your signature key can be obtained in the Authorize.Net Merchant Interface, at Account > Settings > Security Settings > General Security Settings > API Credentials and Keys', 'LION' ),
+				'required' => true,
+			),
+			array(
 				'slug'    => 'acceptjs',
 				'type'    => 'check_box',
 				'label'   => __( 'Enable Accept.js support.', 'LION' ),
@@ -196,7 +208,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'desc'    => __( "Enable this option if your Authorize.net account supports CIM and you'd like to support payment tokens.", 'LION' ),
 				'default' => false,
 			),
-			array(
+			/*array(
 				'slug' => 'step2',
 				'type' => 'html',
 				'html' => '<h4>' . __( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ) . '</h4><p>' .
@@ -204,9 +216,9 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				          '</p><p>' .
 				          __( 'Please log in to your account and add this URL to your Silent Post URL so iThemes Exchange is notified of things like refunds, payments, etc.', 'LION' ) .
 				          '<p><code>' . it_exchange_get_webhook_url( $this->get_slug() ) . '</code></p>'
-			),
+			),*/
 			array(
-				'slug' => 'step3',
+				'slug' => 'step2',
 				'type' => 'html',
 				'html' => '<h4>' . __( 'Step 3. Optional Configuration', 'LION' ) . '</h4>'
 			),
@@ -260,6 +272,13 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'show_if'  => array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 			),
 			array(
+				'slug'     => 'sandbox-signature',
+				'type'     => 'text_box',
+				'label'    => __( 'Sandbox Signature Key', 'LION' ),
+				'tooltip'  => __( 'Your sandbox signature key can be obtained in the Authorize.Net Merchant Interface, at Account > Settings > Security Settings > General Security Settings > API Credentials and Keys', 'LION' ),
+				'required' => true,
+			),
+			array(
 				'slug'     => 'sandbox-public-key',
 				'type'     => 'text_box',
 				'label'    => __( 'Sandbox Public Client Key', 'LION' ),
@@ -281,6 +300,40 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	 * @inheritDoc
 	 */
 	public function get_settings_name() { return 'addon_authorizenet'; }
+
+	/**
+	 * Create webhooks if necessary.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param null|WP_Error $errors
+	 * @param array         $settings
+	 *
+	 * @return array|WP_Error
+	 */
+	public function create_webhooks( $errors, $settings ) {
+
+		if ( is_wp_error( $errors ) ) {
+			return $errors;
+		}
+
+		/** @var ITE_AuthorizeNet_Webhook_Handler $webhook */
+		$webhook = $this->get_handler_by_request_name( 'webhook' );
+
+		if ( $webhook->get_webhook_id() ) {
+			return $settings;
+		}
+
+		try {
+			$webhook->subscribe( array(
+				'settings' => $settings,
+			) );
+		} catch ( Exception $e ) {
+			return new WP_Error( $e->getMessage() );
+		}
+
+		return $errors;
+	}
 
 	/**
 	 * @inheritDoc
