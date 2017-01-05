@@ -113,6 +113,16 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			),
 		);
 
+		/**
+		 * Filter the request used to signup for webhooks.
+		 *
+		 * @since 1.5.0
+		 *
+		 * @param array                            $request
+		 * @param ITE_AuthorizeNet_Webhook_Handler $this
+		 */
+		$request = apply_filters( 'it_exchange_authorizenet_webhook_subscribe_request', $request, $this );
+
 		$settings   = isset( $options['settings'] ) ? $options['settings'] : $this->gateway->settings()->all();
 		$is_sandbox = $this->gateway->is_sandbox_mode();
 
