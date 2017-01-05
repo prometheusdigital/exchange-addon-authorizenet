@@ -143,9 +143,6 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 
 		$response_body = json_decode( $response_body, true );
 
-		error_log( print_r( $request, true ) );
-		error_log( print_r( $response_body, true ) );
-
 		if ( ! $response_body ) {
 			throw new UnexpectedValueException( 'Failed to parse json from Authorize.Net' );
 		}

@@ -86,6 +86,15 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * @inheritDoc
 	 */
+	public function get_webhook_options() {
+		return array(
+			'use_path' => true,
+		);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public function get_ssl_mode() { return self::SSL_REQUIRED; }
 
 	/**
