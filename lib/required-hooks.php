@@ -22,9 +22,10 @@ add_action( 'it_exchange_register_gateways', function ( ITE_Gateways $gateways )
 	$gateways::register( new ITE_AuthorizeNet_Gateway() );
 } );
 
-//For verifying CC... 
-//incase a product doesn't have a shipping address and the shipping add-on is not enabled
-add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
+if ( it_exchange_is_gateway_accepting_payments( 'authorizenet' ) ) {
+	// Auth.Net always required a billing address for verification.
+	add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
+}
 
 /**
  * Can the authorize.net transaction be refunded.
