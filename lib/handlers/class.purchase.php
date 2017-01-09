@@ -2,7 +2,7 @@
 /**
  * Purchase Request Handler.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 
@@ -270,7 +270,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Add the transaction.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
 	 * @param string                       $method_id
@@ -293,7 +293,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Generate the payment schedule.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
 	 * @param ITE_Cart_Product             $cart_product
@@ -363,7 +363,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		/**
 		 * Filter the start date for the subscription.
 		 *
-		 * @since 1.5.0
+		 * @since 2.0.0
 		 *
 		 * @param int                          $start_date
 		 * @param ITE_Gateway_Purchase_Request $request
@@ -387,7 +387,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Get the trial end at time for a prorate purchase request.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Gateway_Prorate_Purchase_Request $request
 	 *
@@ -418,7 +418,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Generate the payment info.
 	 *
-	 * @sicne 1.5.0
+	 * @sicne 2.0.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
 	 *
@@ -440,7 +440,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Generate the ship to address.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Cart $cart
 	 *
@@ -466,7 +466,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Generate the ship to address.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Cart $cart
 	 *

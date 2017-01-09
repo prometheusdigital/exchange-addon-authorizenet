@@ -2,7 +2,7 @@
 /**
  * Authorize.Net Cancel Subscription Handler.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 

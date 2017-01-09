@@ -2,7 +2,7 @@
 /**
  * Authorize.Net Tokenize Handler.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 
@@ -99,7 +99,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Create a customer profile in Auth.net
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Gateway_Tokenize_Request $request
 	 *
@@ -158,7 +158,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Get details about a payment profile.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param int $customer_profile_id
 	 * @param int $payment_profile_id
@@ -201,7 +201,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Check for errors in the Auth.Net Response.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param array $response
 	 *
@@ -226,7 +226,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Create the token in Exchange.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param int                           $profile_id
 	 * @param \ITE_Gateway_Tokenize_Request $request
@@ -299,7 +299,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Generate a payment profile for a tokenization source.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param string|ITE_Gateway_Card|ITE_Gateway_Bank_Account $source
 	 *
@@ -344,7 +344,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Get merchant authentication.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @return array
 	 */
@@ -362,7 +362,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Get the API url.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @return string
 	 */
@@ -375,7 +375,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Get the gateway.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @return ITE_Gateway
 	 */
@@ -386,7 +386,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * Generate an address formatted for Auth.net from an ITE_Location.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Location|null $location
 	 *

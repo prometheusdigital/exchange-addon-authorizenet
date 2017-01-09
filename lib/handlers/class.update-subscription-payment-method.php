@@ -2,7 +2,7 @@
 /**
  * Update Subscription Payment Method.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 
@@ -161,7 +161,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 	 * Auth.net won't retry the subscription until the next payment cycle, so we must charge the customer
 	 * ourselves for the time that will be missed in the Auth.net window.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param IT_Exchange_Subscription $subscription
 	 *

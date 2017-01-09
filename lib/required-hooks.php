@@ -30,7 +30,7 @@ if ( it_exchange_is_gateway_accepting_payments( 'authorizenet' ) ) {
 /**
  * Can the authorize.net transaction be refunded.
  *
- * @since 1.5.0
+ * @since 2.0.0
  *
  * @param bool                    $eligible
  * @param IT_Exchange_Transaction $transaction
@@ -66,7 +66,7 @@ add_filter( 'it_exchange_authorizenet_transaction_can_be_refunded', 'it_exchange
 /**
  * Can a subscription be paused.
  *
- * @since 1.5.0
+ * @since 2.0.0
  *
  * @param bool                     $can
  * @param IT_Exchange_Subscription $subscription
@@ -97,7 +97,7 @@ add_filter( 'it_exchange_subscription_can_be_paused', 'it_exchange_authorizenet_
 /**
  * Enqueue Accept.JS
  *
- * @since 1.5.0
+ * @since 2.0.0
  */
 function it_exchange_authorizenet_enqueue_accept_js() {
 

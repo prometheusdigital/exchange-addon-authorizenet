@@ -1,0 +1,39 @@
+1.0.0 - 2013-10-28 - Justin Sainton
+	Initial Release
+1.0.1 - 2013-12-13 - Packaging Bot (lib/updater)
+	Enhancement: Recently updated plugins and themes no longer report that an update is available.
+	Enhancement: Added alternate line styling to the listings on the licensing page.
+	Enhancement: Products with iThemes in the name will now properly capitalize the name.
+	Enhancement: The updater and licensing system now handle iThemes server outages without causing long page delays or by reporting confusing error messages.
+1.0.2 - 2013-12-18 - Packaging Bot (lib/updater)
+	Bug Fix: Removed unneeded check on package-info.ithemes.com which was causing performance issues on some sites.
+1.0.3 - 2013-12-19 - Packaging Bot (lib/updater)
+	Bug Fix: Licensing will now be universal across all sites of a multisite network. This means that you will only need to license on one site to have the license apply across the entire network.
+1.0.4 - 2014-02-03 - Packaging Bot (lib/updater)
+	Bug Fix: Licensing on SSL-enabled sites now works properly.
+1.0.5 - 2014-11-14 - Packaging Bot (lib/updater)
+	Enhancement: Reduced caching to allow updates to appear more quickly.
+	Enhancement: Authenticating users now uses the new authentication system.
+1.0.6 - 2015-03-16 - Lew Ayotte
+	Fixed bug caused when purchasing as a guest
+	Added more robust billing/shipping address information handling
+1.1.0 - 2015-04-20 - Lew Ayotte
+	Multiple updates involving add_query_arg and remove_query_arg to esc_url()
+1.1.1 - 2015-04-23 - Packaging Bot (lib/updater)
+	Compatibility Fix: Updated plugin and theme update data format to match changes in WordPress 4.2.
+1.2.0 - 2015-07-01 - Lew Ayotte
+	Add deactivation warning
+	Add support for Recurring Payments
+1.2.1 - 2015-07-14 - Packaging Bot (lib/updater)
+	Enhancement: Updated link to iThemes support.
+1.3.0 - 2015-07-28 - Lew Ayotte
+	Fixing bug when shipping address is set for non-recurring payments
+1.4.0 - 2015-11-30 - Timothy Jacobs, Lew Ayotte
+	Enqueue CSS on pages with SW shortcode
+1.4.1 - 2016-03-10 - Timothy Jacobs
+	Tweak: Better error reporting
+1.4.2 = 2016-04-28 - Timothy Jacobs
+	Add: Support for cancelling subscriptions programatically
+1.4.3 - 2016-06-03 - Timothy Jacobs
+	Add: Support for EVOSnap International accounts
+	Fix: Strip invalid characters from zip codes

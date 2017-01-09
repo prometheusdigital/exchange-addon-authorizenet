@@ -3,84 +3,39 @@
  * The following file contains utility functions specific to our Authorize.Net add-on
  * If you're building your own transaction-method addon, it's likely that you will
  * need to do similar things. This includes enqueueing scripts, formatting data for Authorize.net, etc.
- */
+*/
 
 /**
  * Grab the Authorize.Net customer ID for a WP user
  *
- * @since 2.0.0
+ * @since 1.0.0
  *
  * @param integer $customer_id the WP customer ID
- * @param string  $mode
- *
  * @return integer
- */
-function it_exchange_authorizenet_get_customer_profile_id( $customer_id, $mode = '' ) {
+*/
+function it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_id ) {
+	$settings = it_exchange_get_option( 'addon_authorizenet' );
+	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
+	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
-	$gateway = ITE_Gateways::get( 'authorizenet' );
-
-	if ( ! $mode ) {
-		$mode = $gateway->is_sandbox_mode() ? ITE_Const::P_MODE_SANDBOX : ITE_Const::P_MODE_LIVE;
-	}
-
-	$suffix = $mode === ITE_Const::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
-
-	return get_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $suffix, true );
+	return get_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $mode, true );
 }
 
 /**
  * Add the Authorize.Net customer ID as user meta on a WP user
  *
- * @since 2.0.0
+ * @since 1.0.0
  *
  * @param integer $customer_id the WP user ID
  * @param integer $auth_net_id the Authorize.Net customer ID
- * @param string  $mode
- *
- * @return bool
- */
-function it_exchange_authorizenet_set_customer_profile_id( $customer_id, $auth_net_id, $mode = '' ) {
+ * @return boolean
+*/
+function it_exchange_authorizenet_addon_set_authorizenet_customer_id( $customer_id, $auth_net_id ) {
+	$settings = it_exchange_get_option( 'addon_authorizenet' );
+	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
+	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
-	$gateway = ITE_Gateways::get( 'authorizenet' );
-
-	if ( ! $mode ) {
-		$mode = $gateway->is_sandbox_mode() ? ITE_Const::P_MODE_SANDBOX : ITE_Const::P_MODE_LIVE;
-	}
-
-	$suffix = $mode === ITE_Const::P_MODE_SANDBOX ? '_test_mode' : '_live_mode';
-
-	return (booL) update_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $suffix, $auth_net_id );
-}
-
-/**
- * Grab the Authorize.Net customer ID for a WP user
- *
- * @since      1.0.0
- * @deprecated 2.0.0
- *
- * @param integer $customer_id the WP customer ID
- * @param string  $mode
- *
- * @return integer
- */
-function it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_id, $mode = '' ) {
-	return it_exchange_authorizenet_get_customer_profile_id( $customer_id, $mode );
-}
-
-/**
- * Add the Authorize.Net customer ID as user meta on a WP user
- *
- * @since      1.0.0
- * @deprecated 2.0.0
- *
- * @param integer $customer_id the WP user ID
- * @param integer $auth_net_id the Authorize.Net customer ID
- * @param string  $mode
- *
- * @return bool
- */
-function it_exchange_authorizenet_addon_set_authorizenet_customer_id( $customer_id, $auth_net_id, $mode = '' ) {
-	return it_exchange_authorizenet_set_customer_profile_id( $customer_id, $auth_net_id, $mode );
+	return update_user_meta( $customer_id, '_it_exchange_authorizenet_id' . $mode, $auth_net_id );
 }
 
 /**
@@ -89,16 +44,14 @@ function it_exchange_authorizenet_addon_set_authorizenet_customer_id( $customer_
  * @since 1.0.0
  *
  * @param integer $auth_net_id id of Authorize.net transaction
- *
- * @return IT_Exchange_Transaction[]
- */
+ * @return transaction object
+*/
 function it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id ) {
 	$args = array(
 		'meta_key'    => '_it_exchange_transaction_method_id',
 		'meta_value'  => $auth_net_id,
 		'numberposts' => 1, //we should only have one, so limit to 1
 	);
-
 	return it_exchange_get_transactions( $args );
 }
 
@@ -108,17 +61,15 @@ function it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id ) {
  * @since 1.0.0
  *
  * @param integer $auth_net_id id of Authorize.net transaction
- * @param string  $new_status  new status
- *
+ * @param string $new_status new status
  * @return void
- */
+*/
 function it_exchange_authorizenet_addon_update_transaction_status( $auth_net_id, $new_status ) {
 	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id );
-	foreach ( $transactions as $transaction ) { //really only one
+	foreach( $transactions as $transaction ) { //really only one
 		$current_status = it_exchange_get_transaction_status( $transaction );
-		if ( $new_status !== $current_status ) {
+		if ( $new_status !== $current_status )
 			it_exchange_update_transaction_status( $transaction, $new_status );
-		}
 	}
 }
 
@@ -126,12 +77,12 @@ function it_exchange_authorizenet_addon_update_transaction_status( $auth_net_id,
  * Adds a refund to post_meta for an Authorize.Net transaction
  *
  * @since 1.0.0
- */
+*/
 function it_exchange_authorizenet_addon_add_refund_to_transaction( $auth_net_id, $refund ) {
 
 	// Grab transaction
 	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id );
-	foreach ( $transactions as $transaction ) { //really only one
+	foreach( $transactions as $transaction ) { //really only one
 
 		// This refund is already formated on the way in. Don't reformat.
 		it_exchange_add_refund_to_transaction( $transaction, $refund );
@@ -144,14 +95,14 @@ function it_exchange_authorizenet_addon_add_refund_to_transaction( $auth_net_id,
  * @since 1.0.0
  *
  * @param integer $auth_net_id the id of the Authorize.Net transaction
- */
+*/
 function it_exchange_authorizenet_addon_delete_authorizenet_id_from_customer( $auth_net_id ) {
 	$settings = it_exchange_get_option( 'addon_authorizenet' );
 	$mode     = ( $settings['authorizenet-test-mode'] ) ? '_test_mode' : '_live_mode';
 	$mode     = ( $settings['authorizenet-sandbox-mode'] ) ? '_developer_mode' : $mode;
 
 	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $auth_net_id );
-	foreach ( $transactions as $transaction ) { //really only one
+	foreach( $transactions as $transaction ) { //really only one
 		$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
 		if ( false !== ( $current_auth_net_id = it_exchange_authorizenet_addon_get_authorizenet_customer_id( $customer_id ) ) ) {
 			if ( $current_auth_net_id === $auth_net_id ) {
@@ -165,13 +116,12 @@ function it_exchange_authorizenet_addon_delete_authorizenet_id_from_customer( $a
  * Updates a subscription ID to post_meta for a paypal transaction
  *
  * @since 1.3.0
- *
  * @param string $paypal_standard_id PayPal Transaction ID
- * @param string $subscriber_id      PayPal Subscriber ID
- */
+ * @param string $subscriber_id PayPal Subscriber ID
+*/
 function it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $subscriber_id ) {
 	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $txn_id );
-	foreach ( $transactions as $transaction ) { //really only one
+	foreach( $transactions as $transaction ) { //really only one
 		do_action( 'it_exchange_update_transaction_subscription_id', $transaction, $subscriber_id );
 	}
 }
@@ -183,38 +133,35 @@ function it_exchange_authorizenet_addon_update_subscriber_id( $txn_id, $subscrib
  *
  * @since CHANGEME
  *
- * @param integer $method_id      id of Authorize.Net transaction
- * @param string  $payment_status new status
- * @param string  $subscriber_id  from PayPal (optional)
- * @param float   $amount
- *
+ * @param integer $authorizenet_id id of Authorize.Net transaction
+ * @param string $payment_status new status
+ * @param string $subscriber_id from PayPal (optional)
  * @return bool
- */
-function it_exchange_authorizenet_addon_add_child_transaction( $method_id, $payment_status, $subscriber_id, $amount ) {
-
-	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $method_id );
-
-	if ( ! empty( $transactions ) ) {
-		// This transaction DOES exist, don't try to create a new one, just update the status
-		it_exchange_authorizenet_addon_update_transaction_status( $method_id, $payment_status );
-	} else {
-
-		$parent = null;
-
-		$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
-
-		foreach ( $transactions as $transaction ) { // Really only one
-			$parent = $transaction;
+*/
+function it_exchange_authorizenet_addon_add_child_transaction( $authorizenet_id, $payment_status, $subscriber_id, $amount ) {
+	$transactions = it_exchange_authorizenet_addon_get_transaction_id( $authorizenet_id );
+	if ( !empty( $transactions ) ) {
+		//this transaction DOES exist, don't try to create a new one, just update the status
+		it_exchange_authorizenet_addon_update_transaction_status( $authorizenet_id, $payment_status );		
+	} else { 
+		if ( !empty( $subscriber_id ) ) {
+			$transactions = it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id );
+			foreach( $transactions as $transaction ) { //really only one
+				$parent_tx_id = $transaction->ID;
+				$customer_id = get_post_meta( $transaction->ID, '_it_exchange_customer_id', true );
+			}
+		} else {
+			$parent_tx_id = false;
+			$customer_id = false;
 		}
-
-		if ( $parent ) {
-
-			it_exchange_add_subscription_renewal_payment( $parent, $method_id, $payment_status, $amount );
-
+		
+		if ( $parent_tx_id && $customer_id ) {
+			$transaction_object = new stdClass;
+			$transaction_object->total = $amount / 100;
+			it_exchange_add_child_transaction( 'authorizenet', $authorizenet_id, $payment_status, $customer_id, $parent_tx_id, $transaction_object );
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -224,15 +171,13 @@ function it_exchange_authorizenet_addon_add_child_transaction( $method_id, $paym
  * @since CHANGEME
  *
  * @param integer $subscriber_id id of stripe transaction
- *
- * @return IT_Exchange_Transaction[] object
- */
-function it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id ) {
-	$args = array(
-		'meta_key'    => '_it_exchange_transaction_subscriber_id',
-		'meta_value'  => $subscriber_id,
-		'numberposts' => 1, //we should only have one, so limit to 1
-	);
-
-	return it_exchange_get_transactions( $args );
+ * @return transaction object
+*/
+function it_exchange_authorizenet_addon_get_transaction_id_by_subscriber_id( $subscriber_id) {
+    $args = array(
+        'meta_key'    => '_it_exchange_transaction_subscriber_id',
+        'meta_value'  => $subscriber_id,
+        'numberposts' => 1, //we should only have one, so limit to 1
+    );
+    return it_exchange_get_transactions( $args );
 }

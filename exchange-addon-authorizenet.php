@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name: iThemes Exchange - Authorize.Net Add-on
- * Version: 1.4.2
+ * Version: 2.0.0
  * Description: Adds the ability for users to checkout with Authorize.Net.
  * Plugin URI: http://ithemes.com/exchange/authorize-net/
  * Author: iThemes
@@ -17,56 +17,19 @@
 */
 
 /**
- * This registers our plugin as an Authorize.Net addon
+ * Load the Authorize.Net plugin.
  *
- * To learn how to create your own-addon, visit http://ithemes.com/codex/page/Exchange_Custom_Add-ons:_Overview
- *
- * @since 1.0.0
- *
- * @return void
-*/
-function it_exchange_register_authorizenet_addon() {
-	$options = array(
-		'name'              => __( 'Authorize.Net', 'LION' ),
-		'description'       => __( 'Process transactions via Authorize.Net, a robust and powerful payment gateway.', 'LION' ),
-		'author'            => 'iThemes',
-		'author_url'        => 'http://ithemes.com/exchange/authorize_net/',
-		'icon'              => ITUtility::get_url_from_file( dirname( __FILE__ ) . '/lib/images/authorize-net.png' ),
-		'wizard-icon'       => ITUtility::get_url_from_file( dirname( __FILE__ ) . '/lib/images/authorize-settings.png' ),
-		'file'              => dirname( __FILE__ ) . '/init.php',
-		'category'          => 'transaction-methods',
-		//'settings-callback' => 'it_exchange_authorizenet_addon_settings_callback',
-	);
-	it_exchange_register_addon( 'authorizenet', $options );
+ * @since 2.0.0
+ */
+function it_exchange_load_authorizenet() {
+	if ( ! function_exists( 'it_exchange_load_deprecated' ) || it_exchange_load_deprecated() ) {
+		require_once dirname( __FILE__ ) . '/deprecated/exchange-addon-authorizenet.php';
+	} else {
+		require_once dirname( __FILE__ ) . '/plugin.php';
+	}
 }
 
-add_action( 'it_exchange_register_addons', 'it_exchange_register_authorizenet_addon' );
-
-/**
- * Loads the translation data for WordPress
- *
- * @uses load_plugin_textdomain()
- * @since 1.0.0
- * @return void
-*/
-function it_exchange_authorizenet_set_textdomain() {
-	load_plugin_textdomain( 'it-l10n-exchange-authorize_net', false, dirname( plugin_basename( __FILE__  ) ) . '/lang/' );
-}
-add_action( 'plugins_loaded', 'it_exchange_authorizenet_set_textdomain' );
-
-/**
- * Registers Plugin with iThemes updater class
- *
- * @since 1.0.0
- *
- * @param object $updater ithemes updater object
- * @return void
-*/
-function ithemes_exchange_addon_authorizenet_updater_register( $updater ) {
-	$updater->register( 'exchange-addon-authorizenet', __FILE__ );
-}
-add_action( 'ithemes_updater_register', 'ithemes_exchange_addon_authorizenet_updater_register' );
-require( dirname( __FILE__ ) . '/lib/updater/load.php' );
+add_action( 'plugins_loaded', 'it_exchange_load_authorizenet' );
 
 function ithemes_exchange_authorizenet_deactivate() {
 	if ( empty( $_GET['remove-gateway'] ) || 'yes' !== $_GET['remove-gateway'] ) {

@@ -2,7 +2,7 @@
 /**
  * Authorize.Net webhook handler.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 
@@ -92,7 +92,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	/**
 	 * Subscribe to a list of events in Auth.net.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param array $options
 	 *
@@ -116,7 +116,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		/**
 		 * Filter the request used to signup for webhooks.
 		 *
-		 * @since 1.5.0
+		 * @since 2.0.0
 		 *
 		 * @param array                            $request
 		 * @param ITE_AuthorizeNet_Webhook_Handler $this

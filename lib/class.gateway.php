@@ -2,7 +2,7 @@
 /**
  * Gateway class.
  *
- * @since   1.5.0
+ * @since   2.0.0
  * @license GPLv2
  */
 
@@ -20,7 +20,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * ITE_AuthorizeNet_Gateway constructor.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 */
 	public function __construct() {
 
@@ -322,7 +322,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * Create webhooks if necessary.
 	 *
-	 * @since 1.5.0
+	 * @since 2.0.0
 	 *
 	 * @param null|WP_Error $errors
 	 * @param array         $settings
