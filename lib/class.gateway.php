@@ -30,18 +30,27 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler( $this );
 		$this->handlers[] = new ITE_AuthorizeNet_Refund_Request_Handler( $this );
 
-		if ( class_exists( 'ITE_Daily_Price_Calculator' ) ) {
+		if ( class_exists( 'ITE_Daily_Price_Calculator' ) && class_exists( 'ITE_Update_Subscription_Payment_Method_Request' ) ) {
 			$this->handlers[] = new ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler(
 				$this, new ITE_Daily_Price_Calculator(), $factory
 			);
 		}
 
-		$this->handlers[] = new ITE_AuthorizeNet_Cancel_Subscription_Request_Handler( $this );
+		if ( class_exists( 'ITE_Cancel_Subscription_Request' ) ) {
+			$this->handlers[] = new ITE_AuthorizeNet_Cancel_Subscription_Request_Handler( $this );
+		}
 
 		if ( $this->settings()->has( 'cim' ) && $this->settings()->get( 'cim' ) ) {
 			$this->handlers[] = new ITE_AuthorizeNet_Tokenize_Request_Handler( $this );
-			$this->handlers[] = new ITE_AuthorizeNet_Pause_Subscription_Handler();
-			$this->handlers[] = new ITE_AuthorizeNet_Resume_Subscription_Handler();
+
+			if ( class_exists( 'ITE_Pause_Subscription_Request' ) ) {
+				$this->handlers[] = new ITE_AuthorizeNet_Pause_Subscription_Handler();
+			}
+
+
+			if ( class_exists( 'ITE_Resume_Subscription_Request' ) ) {
+				$this->handlers[] = new ITE_AuthorizeNet_Resume_Subscription_Handler();
+			}
 		}
 
 		add_action(
