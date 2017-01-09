@@ -31,6 +31,20 @@ function it_exchange_load_authorizenet() {
 
 add_action( 'plugins_loaded', 'it_exchange_load_authorizenet' );
 
+/**
+ * Registers Plugin with iThemes updater class
+ *
+ * @since 1.0.0
+ *
+ * @param object $updater ithemes updater object
+ * @return void
+ */
+function ithemes_exchange_addon_authorizenet_updater_register( $updater ) {
+	$updater->register( 'exchange-addon-authorizenet', __FILE__ );
+}
+add_action( 'ithemes_updater_register', 'ithemes_exchange_addon_authorizenet_updater_register' );
+require( dirname( __FILE__ ) . '/lib/updater/load.php' );
+
 function ithemes_exchange_authorizenet_deactivate() {
 	if ( empty( $_GET['remove-gateway'] ) || 'yes' !== $_GET['remove-gateway'] ) {
 		$title = __( 'Payment Gateway Warning', 'LION' );
