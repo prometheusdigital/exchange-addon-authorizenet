@@ -36,3 +36,5 @@ include( 'lib/addon-settings.php' );
  * need to do similar things. This includes enqueueing scripts, formatting data for Authorize.Net, etc.
 */
 include( 'lib/addon-functions.php' );
+
+require_once dirname( __FILE__ ) . '/lib/deprecated.php';
