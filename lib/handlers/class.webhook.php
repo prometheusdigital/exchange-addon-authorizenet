@@ -89,10 +89,6 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				$method_id = $webhook['payload']['id'];
 				$details   = $this->get_transaction_details( $method_id, $is_sandbox );
 
-				if ( empty( $details['recurringBilling'] ) ) {
-					break;
-				}
-
 				if ( ! isset( $details['subscription'] ) ) {
 					break;
 				}
@@ -104,21 +100,27 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 					break;
 				}
 
-				$args = array();
+				// recurringBilling determines if this is the first transaction for a subscription or not.
+				if ( empty( $details['recurringBilling'] ) ) {
+					$subscription->get_transaction()->update_method_id( $method_id );
+				} else {
 
-				if ( $token = $subscription->get_payment_token() ) {
-					$args['payment_token'] = $token;
-				} elseif ( $card = $subscription->get_card() ) {
-					$args['card'] = $card;
+					$args = array();
+
+					if ( $token = $subscription->get_payment_token() ) {
+						$args['payment_token'] = $token;
+					} elseif ( $card = $subscription->get_card() ) {
+						$args['card'] = $card;
+					}
+
+					it_exchange_add_subscription_renewal_payment(
+						$subscription->get_transaction(),
+						$method_id,
+						$details['responseCode'],
+						$details['order']['authAmount'],
+						$args
+					);
 				}
-
-				it_exchange_add_subscription_renewal_payment(
-					$subscription->get_transaction(),
-					$method_id,
-					$details['responseCode'],
-					$details['order']['authAmount'],
-					$args
-				);
 
 				break;
 
@@ -189,6 +191,56 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		$this->check_for_errors( $response );
 
 		return $response['transaction'];
+	}
+
+	/**
+	 * Get details about a subscription.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int $subscriber_id
+	 * @param bool $is_sandbox
+	 *
+	 * @return array
+	 */
+	protected function gwt_subscription_details( $subscriber_id, $is_sandbox ) {
+
+		$settings = $this->gateway->settings()->all();
+
+		$api_url      = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
+		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+
+		$body = array(
+			'ARBGetSubscriptionRequest' => array(
+				'merchantAuthentication' => array(
+					'name'           => $api_username,
+					'transactionKey' => $api_password,
+				),
+				'subscriptionId'         => $subscriber_id,
+			)
+		);
+
+		$query = array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+			),
+			'body'    => json_encode( $body ),
+			'timeout' => 30
+		);
+
+		$response = wp_remote_post( $api_url, $query );
+
+		if ( is_wp_error( $response ) ) {
+			throw new UnexpectedValueException( $response->get_error_message() );
+		}
+
+		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$response = json_decode( $body, true );
+
+		$this->check_for_errors( $response );
+
+		return $response['ARBGetSubscriptionResponse']['subscription'];
 	}
 
 	/**
