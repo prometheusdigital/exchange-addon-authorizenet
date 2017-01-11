@@ -166,7 +166,8 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 		}
 
 		$subscription->set_card( $card );
-
+		$subscription->set_payment_token( $token );
+		
 		return true;
 	}
 
