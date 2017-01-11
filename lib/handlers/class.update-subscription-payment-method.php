@@ -181,6 +181,13 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 	 * Auth.net won't retry the subscription until the next payment cycle, so we must charge the customer
 	 * ourselves for the time that will be missed in the Auth.net window.
 	 *
+	 * Take for example a weekly subscription. The subscription was initially purchased on January 1st.
+	 * One January 8th ( 1 week later ), the retry in Authorize.Net failed. The customer has until January 15th
+	 * to update their payment method. On January 10th, the customer updates their payment method. Auth.net won't retry
+	 * their subscription payment until the 15th, but the customer expects that they will have access immediately. So,
+	 * we must charge the customer the daily cost of the subscription for the 5 days of access before the subscription
+	 * will be reattempted.
+	 *
 	 * @since 2.0.0
 	 *
 	 * @param IT_Exchange_Subscription $subscription
@@ -189,18 +196,20 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 	 */
 	protected function calculate_cost_for_days_missed( IT_Exchange_Subscription $subscription ) {
 
+		// In our example, this would be January 8
 		$expired          = $subscription->get_expiry_date();
 		$today            = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
 		$profile          = $subscription->get_recurring_profile();
 		$recurring_amount = $subscription->calculate_recurring_amount_paid();
 
+		// 7 days.
 		$days       = floor( $profile->get_interval_seconds() / DAY_IN_SECONDS );
 		$daily_cost = $this->daily_cost->calculate( $profile, $recurring_amount );
 
-		$days_unused = $expired->diff( $today )->days;
-		$days_left   = $days - $days_unused;
+		$days_unused = $expired->diff( $today )->days; // 2 days
+		$days_left   = $days - $days_unused;           // 5 days
 
-		return $days_left * $daily_cost;
+		return max( $days_left * $daily_cost, 0 );
 	}
 
 	/**

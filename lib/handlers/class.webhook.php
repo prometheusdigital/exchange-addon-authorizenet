@@ -84,9 +84,136 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				}
 
 				break;
+			case 'net.authorize.payment.authcapture.created':
+
+				$method_id = $webhook['payload']['id'];
+				$details   = $this->get_transaction_details( $method_id, $is_sandbox );
+
+				if ( empty( $details['recurringBilling'] ) ) {
+					break;
+				}
+
+				if ( ! isset( $details['subscription'] ) ) {
+					break;
+				}
+
+				$subscriber_id = $details['subscription']['id'];
+				$subscription  = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $subscriber_id );
+
+				if ( ! $subscription ) {
+					break;
+				}
+
+				$args = array();
+
+				if ( $token = $subscription->get_payment_token() ) {
+					$args['payment_token'] = $token;
+				} elseif ( $card = $subscription->get_card() ) {
+					$args['card'] = $card;
+				}
+
+				it_exchange_add_subscription_renewal_payment(
+					$subscription->get_transaction(),
+					$method_id,
+					$details['responseCode'],
+					$details['order']['authAmount'],
+					$args
+				);
+
+				break;
+
+			case 'net.authorize.payment.void.created':
+
+				$void_method_id = $webhook['payload']['id'];
+				$details        = $this->get_transaction_details( $void_method_id, $is_sandbox );
+				$method_id      = $details['reftransId'];
+
+				$transaction = it_exchange_get_transaction_by_method_id( 'authorizenet', $method_id );
+
+				if ( ! $transaction ) {
+					break;
+				}
+
+				$transaction->update_status( '2' );
+				break;
 		}
 
 		return new WP_HTTP_Response( null, 200 );
+	}
+
+	/**
+	 * Get details about a transaction in Auth.net
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int  $method_id
+	 * @param bool $is_sandbox
+	 *
+	 * @return array
+	 */
+	protected function get_transaction_details( $method_id, $is_sandbox ) {
+
+		$settings = $this->gateway->settings()->all();
+
+		$api_url      = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
+		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+
+		$body = array(
+			'getTransactionDetailsRequest' => array(
+				'merchantAuthentication' => array(
+					'name'           => $api_username,
+					'transactionKey' => $api_password,
+				),
+				'transId'                => $method_id,
+			)
+		);
+
+		$query = array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+			),
+			'body'    => json_encode( $body ),
+			'timeout' => 30
+		);
+
+		$response = wp_remote_post( $api_url, $query );
+
+		if ( is_wp_error( $response ) ) {
+			throw new UnexpectedValueException( $response->get_error_message() );
+		}
+
+		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$response = json_decode( $body, true );
+
+		$this->check_for_errors( $response );
+
+		return $response['transaction'];
+	}
+
+	/**
+	 * Check for errors in the Auth.Net Response.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $response
+	 *
+	 * @throws UnexpectedValueException
+	 */
+	protected function check_for_errors( $response ) {
+		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
+			if ( ! empty( $response['messages']['message'] ) ) {
+				$error = reset( $response['messages']['message'] );
+
+				if ( $error && is_string( $error ) ) {
+					throw new UnexpectedValueException( $error );
+				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
+					throw new UnexpectedValueException( $error['text'] );
+				}
+			}
+
+			throw new UnexpectedValueException( 'Unknown error.' );
+		}
 	}
 
 	/**
@@ -110,6 +237,8 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				'net.authorize.customer.subscription.terminated',
 				'net.authorize.customer.subscription.cancelled',
 				'net.authorize.customer.subscription.expiring',
+				'net.authorize.payment.authcapture.created',
+				'net.authorize.payment.void.created',
 			),
 		);
 
