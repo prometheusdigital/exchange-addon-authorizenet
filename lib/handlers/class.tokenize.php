@@ -485,7 +485,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 							var error = '';
 							
 					        for (var i = 0; i < response.messages.message.length; i++) {
-					            error += response.messages.message[i].text + ' ';
+					            error += response.messages.message[i].code + ':' + response.messages.message[i].text + ' ';
 					        }
 					        
 					        deferred.reject( error );
