@@ -68,7 +68,11 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			),
 		);
 
-		if ( $bill_to = $this->generate_address( $request->get_address() ) ) {
+		$billing = $request->get_address();
+		$billing = $billing ?: $request->get_customer()->get_billing_address();
+		$billing = $billing ?: $request->get_customer()->get_shipping_address();
+
+		if ( $billing && $bill_to = $this->generate_address( $billing ) ) {
 			$body['createCustomerPaymentProfileRequest']['paymentProfile']['billTo'] = $bill_to;
 		} else {
 			unset( $body['createCustomerPaymentProfileRequest']['paymentProfile']['billTo'] );
