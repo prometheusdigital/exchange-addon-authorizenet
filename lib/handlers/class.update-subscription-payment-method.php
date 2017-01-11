@@ -39,6 +39,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 	 * @param $request ITE_Update_Subscription_Payment_Method_Request
 	 *
 	 * @throws \InvalidArgumentException
+	 * @throws \UnexpectedValueException
 	 */
 	public function handle( $request ) {
 
@@ -93,7 +94,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 			/** @var ITE_Purchase_Request_Handler $handler */
 			$handler = $this->gateway->get_handler_by_request_name( 'purchase' );
 
-			$request = $this->factory->make( 'purchase', array(
+			$charge = $this->factory->make( 'purchase', array(
 				'cart'     => $cart,
 				'nonce'    => $handler->get_nonce(),
 				'card'     => $card,
@@ -101,7 +102,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 				'child_of' => $subscription->get_transaction(),
 			) );
 
-			$transaction = $handler->handle( $request );
+			$transaction = $handler->handle( $charge );
 
 			if ( ! $transaction ) {
 				throw new UnexpectedValueException( 'Unable to process reactivation transaction.' );
@@ -147,7 +148,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 			$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 			$obj  = json_decode( $body, true );
 
-			if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
+			if ( isset( $obj['messages'], $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] === 'Error' ) {
 				if ( ! empty( $obj['messages']['message'] ) ) {
 					$error = reset( $obj['messages']['message'] );
 
@@ -157,6 +158,8 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 
 					return false;
 				}
+
+				return false;
 			}
 		} else {
 			throw new UnexpectedValueException( $response->get_error_message() );
