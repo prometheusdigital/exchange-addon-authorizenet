@@ -601,7 +601,7 @@ function it_exchange_print_authorizenet_wizard_settings( $form ) {
 function it_exchange_save_authorizenet_wizard_settings( $errors ) {
 
 	_deprecated_function( __FUNCTION__, '2.0.0' );
-	
+
 	if ( ! empty( $errors ) )
 		return $errors;
 

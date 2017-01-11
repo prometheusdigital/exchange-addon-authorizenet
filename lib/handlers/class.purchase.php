@@ -418,7 +418,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	/**
 	 * Generate the payment info.
 	 *
-	 * @sicne 2.0.0
+	 * @since 2.0.0
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
 	 *

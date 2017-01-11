@@ -37,18 +37,26 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 	 * @inheritDoc
 	 *
 	 * @param $request ITE_Update_Subscription_Payment_Method_Request
+	 *
+	 * @throws \InvalidArgumentException
 	 */
 	public function handle( $request ) {
 
-		if ( ! $request->get_card() ) {
-			throw new InvalidArgumentException( 'Authorize.Net can only handle updating by card.' );
-		}
-
 		$subscription = $request->get_subscription();
-		$card         = $request->get_card();
 
 		if ( ! $subscription->get_subscriber_id() ) {
 			return false;
+		}
+
+		$card  = $request->get_card();
+		$token = $request->get_payment_token();
+
+		if ( $tokenize = $request->get_tokenize() ) {
+			$token = $this->gateway->get_handler_for( $tokenize )->handle( $tokenize );
+		}
+
+		if ( ! $token && ! $card ) {
+			throw new InvalidArgumentException( 'Unable to update payment with given information.' );
 		}
 
 		$settings = $this->gateway->settings()->all();
@@ -99,6 +107,21 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 			}
 		}
 
+		$sub_data = array();
+
+		if ( $token ) {
+			$sub_data['profile'] = array(
+				'customerProfileId'        => it_exchange_authorizenet_get_customer_profile_id( $subscription->get_customer()->get_ID() ),
+				'customerPaymentProfileId' => $token->token,
+			);
+		} elseif ( $card ) {
+			$sub_data['payment']['creditCard'] = array(
+				'cardNumber'     => $card->get_number(),
+				'expirationDate' => $card->get_expiration_year() . '-' . $card->get_expiration_month(),
+				'cardCode'       => $card->get_cvc(),
+			);
+		}
+
 		$api_request = array(
 			'ARBUpdateSubscriptionRequest' => array(
 				'merchantAuthentication' => array(
@@ -106,15 +129,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 					'transactionKey' => $api_password,
 				),
 				'subscriptionId'         => $subscription->get_subscriber_id(),
-				'subscription'           => array(
-					'payment' => array(
-						'creditCard' => array(
-							'cardNumber'     => $card->get_number(),
-							'expirationDate' => $card->get_expiration_year() . '-' . $card->get_expiration_month(),
-							'cardCode'       => $card->get_cvc(),
-						)
-					)
-				)
+				'subscription'           => $sub_data,
 			)
 		);
 
