@@ -97,6 +97,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 				'cart'     => $cart,
 				'nonce'    => $handler->get_nonce(),
 				'card'     => $card,
+				'token'    => $token,
 				'child_of' => $subscription->get_transaction(),
 			) );
 
@@ -167,7 +168,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 
 		$subscription->set_card( $card );
 		$subscription->set_payment_token( $token );
-		
+
 		return true;
 	}
 
