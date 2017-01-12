@@ -76,7 +76,16 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			case 'net.authorize.customer.subscription.terminated':
 			case 'net.authorize.customer.subscription.cancelled':
 
-				$s      = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $webhook['payload']['id'] );
+				$s = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $webhook['payload']['id'] );
+
+				if ( ! $s ) {
+					break;
+				}
+
+				if ( $s->are_occurrences_limited() && $s->get_remaining_occurrences() === 0 ) {
+					break;
+				}
+
 				$status = $webhook['payload']['status'] === 'expired' ? $s::STATUS_DEACTIVATED : $s::STATUS_CANCELLED;
 
 				if ( ! $s->is_status( $status ) ) {
@@ -198,10 +207,11 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param int $subscriber_id
+	 * @param int  $subscriber_id
 	 * @param bool $is_sandbox
 	 *
 	 * @return array
+	 * @throws \UnexpectedValueException
 	 */
 	protected function gwt_subscription_details( $subscriber_id, $is_sandbox ) {
 
