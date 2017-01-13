@@ -88,7 +88,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 
 				$status = $webhook['payload']['status'] === 'expired' ? $s::STATUS_DEACTIVATED : $s::STATUS_CANCELLED;
 
-				if ( ! $s->is_status( $status ) ) {
+				if ( ! $s->is_status( $status, $s::STATUS_COMPLIMENTARY ) ) {
 					$s->set_status( $status );
 				}
 
