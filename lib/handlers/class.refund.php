@@ -94,7 +94,7 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 		$response = json_decode( $body, true );
 
-		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
+		if ( isset( $response['messages'], $response['messages']['resultCode'] ) && $response['messages']['resultCode'] === 'Error' ) {
 			if ( ! empty( $response['messages']['message'] ) ) {
 				$error = reset( $response['messages']['message'] );
 
@@ -104,17 +104,17 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 					throw new UnexpectedValueException( $error['text'] );
 				}
 			}
+
+			return null;
 		}
 
-		$refund = ITE_Refund::create( array(
+		return ITE_Refund::create( array(
 			'transaction' => $transaction,
 			'amount'      => $request->get_amount(),
 			'gateway_id'  => $response['transactionResponse']['transId'],
 			'reason'      => $request->get_reason(),
 			'issued_by'   => $request->issued_by(),
 		) );
-
-		return $refund;
 	}
 
 	/**

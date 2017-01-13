@@ -58,7 +58,7 @@ function it_exchange_authorizenet_transaction_can_be_refunded( $eligible, IT_Exc
 
 	$diff = $placed->diff( $now );
 
-	return $diff->days < 179;
+	return $diff->days < 179 && $diff->days > 2;
 }
 
 add_filter( 'it_exchange_authorizenet_transaction_can_be_refunded', 'it_exchange_authorizenet_transaction_can_be_refunded', 10, 2 );
