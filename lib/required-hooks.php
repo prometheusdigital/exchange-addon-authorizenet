@@ -53,6 +53,12 @@ function it_exchange_authorizenet_transaction_can_be_refunded( $eligible, IT_Exc
 		return false;
 	}
 
+	$method_id = $transaction->get_method_id();
+
+	if ( ! is_numeric( $method_id ) ) {
+		return false;
+	}
+
 	$now    = new DateTime();
 	$placed = $transaction->order_date;
 
