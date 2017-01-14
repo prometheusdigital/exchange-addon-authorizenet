@@ -45,10 +45,10 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		}
 
 		// The has is of format sha512=HASHHERE
-		list( , $hash) = explode( '=', $hash );
+		list( , $hash ) = explode( '=', $hash );
 		$computed_hash = hash_hmac( 'sha512', $body, $signature );
 
-		if ( ! hash_equals( $hash, $computed_hash ) ) {
+		if ( ! hash_equals( strtolower( $hash ), strtolower( $computed_hash ) ) ) {
 			return new WP_HTTP_Response( null, 400 );
 		}
 
