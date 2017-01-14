@@ -72,7 +72,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			case 'net.authorize.customer.subscription.suspended':
 
 				$s = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $webhook['payload']['id'] );
-				$s->set_status( $s::STATUS_PAYMENT_FAILED );
+				$s->set_status_from_gateway_update( $s::STATUS_PAYMENT_FAILED );
 
 				break;
 			case 'net.authorize.customer.subscription.terminated':
@@ -84,15 +84,8 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 					break;
 				}
 
-				if ( $s->are_occurrences_limited() && $s->get_remaining_occurrences() === 0 ) {
-					break;
-				}
-
 				$status = $webhook['payload']['status'] === 'expired' ? $s::STATUS_DEACTIVATED : $s::STATUS_CANCELLED;
-
-				if ( ! $s->is_status( $status, $s::STATUS_COMPLIMENTARY ) ) {
-					$s->set_status( $status );
-				}
+				$s->set_status_from_gateway_update( $status );
 
 				break;
 			case 'net.authorize.payment.authcapture.created':
