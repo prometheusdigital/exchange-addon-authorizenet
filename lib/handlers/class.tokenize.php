@@ -476,6 +476,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 						cardData.year = cardData.year - 2000;
 					}
 					
+					cardData.year += '';
+					
 					secureData.cardData = cardData;				
 					secureData.authData = authData;
 					
