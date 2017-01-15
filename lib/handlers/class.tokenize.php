@@ -470,14 +470,14 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 						}
 					}
 					
+					cardData.year = Number.parseInt( cardData.year );
+					
 					if ( cardData.year > 2000 ) {
 						cardData.year = cardData.year - 2000;
 					}
 					
 					secureData.cardData = cardData;				
 					secureData.authData = authData;
-					
-					Accept.dispatchData( secureData, 'itExchangeAcceptJSCallback' );
 					
 					window.itExchangeAcceptJSCallback = function( response ) {
 						if (response.messages.resultCode === 'Error') {
@@ -492,6 +492,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 					        deferred.resolve( response.opaqueData.dataValue );
 					    }
 					}
+					
+					Accept.dispatchData( secureData, 'itExchangeAcceptJSCallback' );
 				} else {
 					deferred.reject( 'Unknown token request type.' );
 				}
