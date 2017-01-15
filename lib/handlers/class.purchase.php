@@ -206,7 +206,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					// should be only one
 					foreach ( $subscriptions as $subscription ) {
 						$subscription->set_subscriber_id( $obj['subscriptionId'] );
-						$subscription->set_status( IT_Exchange_Subscription::STATUS_ACTIVE );
+						$subscription->set_status_from_gateway_update( IT_Exchange_Subscription::STATUS_ACTIVE );
 					}
 				}
 			} else {
