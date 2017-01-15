@@ -265,12 +265,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 
 			list( $year, $month ) = explode( '-', $expires );
 
-			if ( $year ) {
-				$token->set_expiration_year( $year );
-			}
-
-			if ( $month ) {
-				$token->set_expiration_month( $month );
+			if ( $month && $year ) {
+				$token->set_expiration( $month, $year );
 			}
 
 		} elseif ( $source instanceof ITE_Gateway_Card ) {
@@ -279,8 +275,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			$token = ITE_Payment_Token_Card::create( $attr );
 
 			if ( $token ) {
-				$token->set_expiration_month( $source->get_expiration_month() );
-				$token->set_expiration_year( $source->get_expiration_year() );
+				$token->set_expiration( $source->get_expiration_month(), $source->get_expiration_year() );
 			}
 
 		} elseif ( $source instanceof ITE_Gateway_Bank_Account ) {
