@@ -110,6 +110,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'transactionRequest'     => array(
 						'transactionType' => 'authCaptureTransaction',
 						'amount'          => it_exchange_get_cart_total( false, array( 'cart' => $cart ) ),
+						'payment'         => null,
 						'profile'         => null,
 						'order'           => array(
 							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
@@ -129,6 +130,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'paymentProfile'    => array( 'paymentProfileId' => $token->token, ),
 				);
 				unset( $body['createTransactionRequest']['transactionRequest']['billTo'] );
+				unset( $body['createTransactionRequest']['transactionRequest']['payment'] );
 			} elseif ( $card ) {
 				$body['createTransactionRequest']['transactionRequest']['payment'] = $card;
 				unset( $body['createTransactionRequest']['transactionRequest']['profile'] );

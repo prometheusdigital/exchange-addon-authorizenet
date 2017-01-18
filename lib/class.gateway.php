@@ -198,21 +198,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'required' => true,
 			),
 			array(
-				'slug'    => 'acceptjs',
-				'type'    => 'check_box',
-				'label'   => __( 'Enable Accept.js support.', 'LION' ),
-				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
-				'default' => false,
-			),
-			array(
-				'slug'     => 'public-key',
-				'type'     => 'text_box',
-				'label'    => __( 'Public Client Key', 'LION' ),
-				'tooltip'  => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
-				'show_if'  => array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
-				'required' => true,
-			),
-			array(
 				'slug'    => 'evosnap-international',
 				'type'    => 'check_box',
 				'label'   => __( 'EVOSnap International Account', 'LION' ),
@@ -226,15 +211,25 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'desc'    => __( "Enable this option if your Authorize.net account supports CIM and you'd like to support payment tokens.", 'LION' ),
 				'default' => false,
 			),
-			/*array(
-				'slug' => 'step2',
-				'type' => 'html',
-				'html' => '<h4>' . __( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ) . '</h4><p>' .
-				          __( 'The Silent Post URL can be configured in the Account section of the Authorize.Net dashboard. Click "Silent Post URL" to reveal a form to add a new URL for receiving a Silent Post.', 'LION' ) .
-				          '</p><p>' .
-				          __( 'Please log in to your account and add this URL to your Silent Post URL so iThemes Exchange is notified of things like refunds, payments, etc.', 'LION' ) .
-				          '<p><code>' . it_exchange_get_webhook_url( $this->get_slug() ) . '</code></p>'
-			),*/
+			array(
+				'slug'    => 'acceptjs',
+				'type'    => 'check_box',
+				'label'   => __( 'Enable Accept.js support.', 'LION' ),
+				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
+				'default' => false,
+				'show_if' => array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
+			),
+			array(
+				'slug'     => 'public-key',
+				'type'     => 'text_box',
+				'label'    => __( 'Public Client Key', 'LION' ),
+				'tooltip'  => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if'  => array(
+					array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
+					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
+				),
+				'required' => true,
+			),
 			array(
 				'slug' => 'step2',
 				'type' => 'html',
@@ -302,6 +297,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'label'    => __( 'Sandbox Public Client Key', 'LION' ),
 				'tooltip'  => __( 'Your Sandbox Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
 				'show_if'  => array(
+					array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
 					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
 					array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 				),

@@ -310,7 +310,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		$request = apply_filters( 'it_exchange_authorizenet_webhook_subscribe_request', $request, $this );
 
 		$settings   = isset( $options['settings'] ) ? $options['settings'] : $this->gateway->settings()->all();
-		$is_sandbox = $this->gateway->is_sandbox_mode();
+		$is_sandbox = ! empty( $settings['authorizenet-sandbox-mode'] );
 
 		$login_id        = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
 		$transaction_key = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
