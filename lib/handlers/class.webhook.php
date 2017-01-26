@@ -295,7 +295,10 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				'net.authorize.customer.subscription.cancelled',
 				'net.authorize.customer.subscription.expiring',
 				'net.authorize.payment.authcapture.created',
+				'net.authorize.payment.authorization.created',
+				'net.authorize.payment.capture.created',
 				'net.authorize.payment.void.created',
+				'net.authorize.customer.subscription.updated',
 			),
 		);
 
@@ -364,7 +367,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	 * @return string
 	 */
 	public function get_webhook_id( $mode = '' ) {
-		$mode = $mode || ( $this->gateway->is_sandbox_mode() ? 'sandbox' : 'live' );
+		$mode = $mode ?: ( $this->gateway->is_sandbox_mode() ? 'sandbox' : 'live' );
 
 		return get_option( "it_exchange_authnet_webhook_id_{$mode}", '' );
 	}

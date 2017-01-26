@@ -130,6 +130,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			'authorizenet-api-md5-hash',
 			'evosnap-international',
 			'step2',
+			'step3',
 			'authorizenet-purchase-button-label'
 		);
 
@@ -232,6 +233,15 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 			),
 			array(
 				'slug' => 'step2',
+				'type' => 'html',
+				'html' => '<h4>' . __( 'Step 2. Enable Transaction Details API', 'LION' ) . '</h4><p>' .
+				          __( 'Enable the Transaction Details API under Account -> Settings -> Security Settings -> General Security Settings -> Transaction Details API.', 'LION' ) .
+				          '</p><p>' .
+				          __( 'This must be enabled for your sandbox account as well if in use.', 'LION' )
+				          . '</p>'
+			),
+			array(
+				'slug' => 'step3',
 				'type' => 'html',
 				'html' => '<h4>' . __( 'Step 3. Optional Configuration', 'LION' ) . '</h4>'
 			),
