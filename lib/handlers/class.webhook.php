@@ -98,7 +98,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 				}
 
 				$subscriber_id = $details['subscription']['id'];
-				$subscription  = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', $subscriber_id );
+				$subscription  = it_exchange_get_subscription_by_subscriber_id( 'authorizenet', (string) $subscriber_id );
 
 				if ( ! $subscription ) {
 					break;
@@ -109,7 +109,9 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 					$subscription->get_transaction()->update_method_id( $method_id );
 				} else {
 
-					$args = array();
+					$args = array(
+						'date' => new DateTime( $details['submitTimeUTC'], new DateTimeZone( 'UTC' ) ),
+					);
 
 					if ( $token = $subscription->get_payment_token() ) {
 						$args['payment_token'] = $token;
@@ -121,7 +123,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 						$subscription->get_transaction(),
 						$method_id,
 						$details['responseCode'],
-						$details['order']['authAmount'],
+						$details['authAmount'],
 						$args
 					);
 				}
@@ -157,7 +159,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	 *
 	 * @return array
 	 */
-	protected function get_transaction_details( $method_id, $is_sandbox ) {
+	public function get_transaction_details( $method_id, $is_sandbox ) {
 
 		$settings = $this->gateway->settings()->all();
 
