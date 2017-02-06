@@ -399,6 +399,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 					case 'auto-renew':
 					case 'trial':
 					case 'trial-profile':
+					case 'max-occurrences':
 						return true;
 					default:
 						return false;
