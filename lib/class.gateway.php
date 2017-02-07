@@ -25,9 +25,10 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	public function __construct() {
 
 		$factory = new ITE_Gateway_Request_Factory();
+		$helper  = new ITE_AuthorizeNet_Request_Helper( $this );
 
-		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, $factory );
-		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler( $this );
+		$this->handlers[] = new ITE_AuthorizeNet_Purchase_Request_Handler( $this, $factory, $helper );
+		$this->handlers[] = new ITE_AuthorizeNet_Webhook_Handler( $this, $helper );
 		$this->handlers[] = new ITE_AuthorizeNet_Refund_Request_Handler( $this );
 
 		if ( class_exists( 'ITE_Daily_Price_Calculator' ) && class_exists( 'ITE_Update_Subscription_Payment_Method_Request' ) ) {
@@ -41,23 +42,19 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 		}
 
 		if ( $this->settings()->has( 'cim' ) && $this->settings()->get( 'cim' ) ) {
-			$this->handlers[] = new ITE_AuthorizeNet_Tokenize_Request_Handler( $this );
+			$this->handlers[] = new ITE_AuthorizeNet_Tokenize_Request_Handler( $this, $helper );
 
 			if ( class_exists( 'ITE_Pause_Subscription_Request' ) ) {
 				$this->handlers[] = new ITE_AuthorizeNet_Pause_Subscription_Handler();
 			}
-
 
 			if ( class_exists( 'ITE_Resume_Subscription_Request' ) ) {
 				$this->handlers[] = new ITE_AuthorizeNet_Resume_Subscription_Handler();
 			}
 		}
 
-		add_action(
-			"it_exchange_validate_admin_form_settings_for_{$this->get_settings_name()}",
-			array( $this, 'create_webhooks' ),
-			10, 2
-		);
+		$name = $this->get_settings_name();
+		add_action( "it_exchange_validate_admin_form_settings_for_{$name}", array( $this, 'create_webhooks' ), 10, 2 );
 
 		parent::__construct();
 	}
@@ -199,6 +196,21 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'required' => true,
 			),
 			array(
+				'slug'    => 'acceptjs',
+				'type'    => 'check_box',
+				'label'   => __( 'Enable Accept.js support.', 'LION' ),
+				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
+				'default' => false,
+			),
+			array(
+				'slug'     => 'public-key',
+				'type'     => 'text_box',
+				'label'    => __( 'Public Client Key', 'LION' ),
+				'tooltip'  => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
+				'show_if'  => array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
+				'required' => true,
+			),
+			array(
 				'slug'    => 'evosnap-international',
 				'type'    => 'check_box',
 				'label'   => __( 'EVOSnap International Account', 'LION' ),
@@ -211,25 +223,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'label'   => __( 'Enable Customer Information Manager (CIM)', 'LION' ),
 				'desc'    => __( "Enable this option if your Authorize.net account supports CIM and you'd like to support payment tokens.", 'LION' ),
 				'default' => false,
-			),
-			array(
-				'slug'    => 'acceptjs',
-				'type'    => 'check_box',
-				'label'   => __( 'Enable Accept.js support.', 'LION' ),
-				'desc'    => __( 'Accept.js helps minimize your PCI compliance because it sends payment data directly to Authorize.Net.', 'LION' ),
-				'default' => false,
-				'show_if' => array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
-			),
-			array(
-				'slug'     => 'public-key',
-				'type'     => 'text_box',
-				'label'    => __( 'Public Client Key', 'LION' ),
-				'tooltip'  => __( 'Your Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
-				'show_if'  => array(
-					array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
-					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
-				),
-				'required' => true,
 			),
 			array(
 				'slug' => 'step2',
@@ -307,7 +300,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 				'label'    => __( 'Sandbox Public Client Key', 'LION' ),
 				'tooltip'  => __( 'Your Sandbox Public Client Key can be found under Account -> Settings -> Security Settings -> General Security Settings -> Manage Public Client Key', 'LION' ),
 				'show_if'  => array(
-					array( 'field' => 'cim', 'value' => true, 'compare' => '=' ),
 					array( 'field' => 'acceptjs', 'value' => true, 'compare' => '=' ),
 					array( 'field' => 'authorizenet-sandbox-mode', 'value' => true, 'compare' => '=' ),
 				),

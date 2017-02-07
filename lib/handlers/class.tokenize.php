@@ -14,12 +14,19 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/** @var ITE_Gateway */
 	private $gateway;
 
+	/** @var ITE_AuthorizeNet_Request_Helper */
+	private $helper;
+
 	/**
 	 * ITE_AuthorizeNet_Tokenize_Request_Handler constructor.
 	 *
-	 * @param ITE_Gateway $gateway
+	 * @param ITE_Gateway                     $gateway
+	 * @param ITE_AuthorizeNet_Request_Helper $helper
 	 */
-	public function __construct( ITE_Gateway $gateway ) { $this->gateway = $gateway; }
+	public function __construct( ITE_Gateway $gateway, ITE_AuthorizeNet_Request_Helper $helper ) {
+		$this->gateway = $gateway;
+		$this->helper  = $helper;
+	}
 
 	/**
 	 * @inheritDoc
@@ -417,96 +424,12 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	/**
 	 * @inheritDoc
 	 */
-	public function get_tokenize_js_function() {
+	public function get_tokenize_js_function() { return $this->helper->get_tokenize_js_function(); }
 
-		if ( $this->gateway->is_sandbox_mode() ) {
-			$public_key = esc_js( $this->gateway->settings()->get( 'sandbox-public-key' ) );
-			$login_id   = esc_js( $this->gateway->settings()->get( 'authorizenet-sandbox-api-login-id' ) );
-			$script     = esc_js( 'https://jstest.authorize.net/v1/Accept.js' );
-		} else {
-			$public_key = esc_js( $this->gateway->settings()->get( 'public-key' ) );
-			$script     = esc_js( 'https://js.authorize.net/v1/Accept.js' );
-			$login_id   = esc_js( $this->gateway->settings()->get( 'authorizenet-api-login-id' ) );
-		}
-
-		return <<<JS
-		
-		function( type, tokenize ) {
-		
-			var deferred = jQuery.Deferred();
-			
-			window.itExchangeAcceptJsTokenize = function() {
-				
-				var cardTransform = {
-					number: 'cardNumber',
-					cvc: 'cardCode',
-					year: 'year',
-					month: 'month',
-				};
-				
-				var secureData = {}, authData = {}, cardData = {};
-				
-				authData.clientKey  = '$public_key';
-				authData.apiLoginID = '$login_id';
-				
-				if ( tokenize.name ) {
-					cardData.fullName = tokenize.name;
-				}
-			
-				if ( type === 'card' ) {
-					for ( var from in cardTransform ) {
-						if ( ! cardTransform.hasOwnProperty( from ) ) {
-							continue;
-						}
-						
-						var to = cardTransform[ from ];
-						
-						if ( tokenize[from] ) {
-							cardData[to] = tokenize[from];
-						} else {
-							deferred.reject( 'Missing property ' + from );
-							
-							return;
-						}
-					}
-					
-					cardData.year = Number.parseInt( cardData.year );
-					
-					if ( cardData.year > 2000 ) {
-						cardData.year = cardData.year - 2000;
-					}
-					
-					cardData.year += '';
-					
-					secureData.cardData = cardData;				
-					secureData.authData = authData;
-					
-					window.itExchangeAcceptJSCallback = function( response ) {
-						if (response.messages.resultCode === 'Error') {
-							var error = '';
-							
-					        for (var i = 0; i < response.messages.message.length; i++) {
-					            error += response.messages.message[i].code + ':' + response.messages.message[i].text + ' ';
-					        }
-					        
-					        deferred.reject( error );
-					    } else {
-					        deferred.resolve( response.opaqueData.dataValue );
-					    }
-					}
-					
-					Accept.dispatchData( secureData, 'itExchangeAcceptJSCallback' );
-				} else {
-					deferred.reject( 'Unknown token request type.' );
-				}
-			};
-			
-			window.itExchangeAcceptJsTokenize();
-			
-			return deferred.promise();
-		}
-JS;
-	}
+	/**
+	 * @inheritDoc
+	 */
+	public function is_js_tokenizer_configured() { return $this->helper->is_js_tokenizer_configured(); }
 
 	/**
 	 * @inheritDoc

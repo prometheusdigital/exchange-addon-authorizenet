@@ -9,7 +9,18 @@
 /**
  * Class ITE_AuthorizeNet_Purchase_Request_Handler
  */
-class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Request_Handler {
+class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Request_Handler implements ITE_Gateway_JS_Tokenize_Handler {
+
+	/** @var ITE_AuthorizeNet_Request_Helper */
+	private $helper;
+
+	/**
+	 * @inheritDoc
+	 */
+	public function __construct( ITE_Gateway $gateway, ITE_Gateway_Request_Factory $factory, ITE_AuthorizeNet_Request_Helper $js_tokenizer ) {
+		parent::__construct( $gateway, $factory );
+		$this->helper = $js_tokenizer;
+	}
 
 	/**
 	 * @inheritDoc
@@ -29,14 +40,16 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		$customer     = $request->get_customer();
 		$reference_id = substr( it_exchange_create_unique_hash(), 20 );
 
-		$token = $card = null;
+		$token = $card_payment = null;
 
-		if ( $request->get_token() ) {
+		if ( $request->get_one_time_token() ) {
+			$card_payment = $this->generate_payment( $request );
+		} elseif ( $request->get_token() ) {
 			$token = $request->get_token();
 		} elseif ( ( $tokenize = $request->get_tokenize() ) && $this->get_gateway()->can_handle( 'tokenize' ) ) {
 			$token = $this->get_gateway()->get_handler_for( $tokenize )->handle( $tokenize );
 		} elseif ( $request->get_card() ) {
-			$card = $this->generate_payment( $request );
+			$card_payment = $this->generate_payment( $request );
 		} else {
 
 			$cart->get_feedback()->add_error( __( 'Invalid payment method.', 'LION' ) );
@@ -91,8 +104,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				);
 				unset( $body['ARBCreateSubscriptionRequest']['subscription']['billTo'] );
 				unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
-			} elseif ( $card ) {
-				$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card;
+			} elseif ( $card_payment ) {
+				$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card_payment;
 			}
 
 			if ( $shipping = $this->generate_ship_to( $cart ) ) {
@@ -131,8 +144,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				);
 				unset( $body['createTransactionRequest']['transactionRequest']['billTo'] );
 				unset( $body['createTransactionRequest']['transactionRequest']['payment'] );
-			} elseif ( $card ) {
-				$body['createTransactionRequest']['transactionRequest']['payment'] = $card;
+			} elseif ( $card_payment ) {
+				$body['createTransactionRequest']['transactionRequest']['payment'] = $card_payment;
 				unset( $body['createTransactionRequest']['transactionRequest']['profile'] );
 			}
 
@@ -176,19 +189,15 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 		$obj  = json_decode( $body, true );
 
-		if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
-			if ( ! empty( $obj['messages']['message'] ) ) {
-				$error = reset( $obj['messages']['message'] );
-
-				if ( $error && is_string( $error ) ) {
-					$cart->get_feedback()->add_error( $error );
-				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
-					$cart->get_feedback()->add_error( $error['text'] );
-				}
-			}
+		try {
+			$this->helper->check_for_errors( $obj );
+		} catch ( Exception $e ) {
+			$cart->get_feedback()->add_error( $e->getMessage() );
 
 			return null;
 		}
+
+		$transaction = isset( $obj['transactionResponse'] ) ? $obj['transactionResponse'] : null;
 
 		$txn_args = array();
 
@@ -196,6 +205,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			$txn_args['card'] = $request->get_card();
 		} elseif ( $token ) {
 			$txn_args['payment_token'] = $token;
+		} elseif ( $transaction && ! empty( $transaction['transId'] ) && $request->get_one_time_token() ) {
+			$txn_args['card'] = new ITE_Gateway_Card( $transaction['accountNumber'], 0, 0, 0 );
 		}
 
 		if ( $sub_payment_schedule ) {
@@ -225,9 +236,8 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 				return null;
 			}
-		} else {
-			$transaction = $obj['transactionResponse'];
-			$method_id   = $transaction['transId'];
+		} elseif ( $transaction ) {
+			$method_id = $transaction['transId'];
 
 			if ( empty( $method_id ) ) { // transId is 0 for all test requests. Generate a random one.
 				$method_id = substr( uniqid( 'test_' ), 0, 12 );
@@ -268,6 +278,16 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 		return it_exchange_get_transaction( $txn_id );
 	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function get_tokenize_js_function() { return $this->helper->get_tokenize_js_function(); }
+
+	/**
+	 * @inheritDoc
+	 */
+	public function is_js_tokenizer_configured() { return $this->helper->is_js_tokenizer_configured(); }
 
 	/**
 	 * Add the transaction.
@@ -430,13 +450,24 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 		$cc = $request->get_card();
 
-		return array(
-			'creditCard' => array(
-				'cardNumber'     => $cc->get_number(),
-				'expirationDate' => $cc->get_expiration_month() . $cc->get_expiration_year(),
-				'cardCode'       => $cc->get_cvc(),
-			),
-		);
+		if ( $cc ) {
+			return array(
+				'creditCard' => array(
+					'cardNumber'     => $cc->get_number(),
+					'expirationDate' => $cc->get_expiration_month() . $cc->get_expiration_year(),
+					'cardCode'       => $cc->get_cvc(),
+				),
+			);
+		} elseif ( $one_time = $request->get_one_time_token() ) {
+			return array(
+				'opaqueData' => array(
+					'dataDescriptor' => 'COMMON.ACCEPT.INAPP.PAYMENT',
+					'dataValue'      => $one_time,
+				)
+			);
+		} else {
+			return array();
+		}
 	}
 
 	/**

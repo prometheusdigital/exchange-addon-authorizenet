@@ -18,11 +18,19 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	private $gateway;
 
 	/**
+	 * @var ITE_AuthorizeNet_Request_Helper
+	 */
+	private $helper;
+
+	/**
 	 * ITE_AuthorizeNet_Webhook_Handler constructor.
 	 *
-	 * @param ITE_Gateway $gateway
+	 * @param ITE_Gateway                     $gateway
+	 * @param ITE_AuthorizeNet_Request_Helper $helper
 	 */
-	public function __construct( ITE_Gateway $gateway ) { $this->gateway = $gateway; }
+	public function __construct( ITE_Gateway $gateway, ITE_AuthorizeNet_Request_Helper $helper ) { $this->gateway = $gateway;
+		$this->helper = $helper;
+	}
 
 	/**
 	 * @inheritDoc
@@ -91,7 +99,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			case 'net.authorize.payment.authcapture.created':
 
 				$method_id = $webhook['payload']['id'];
-				$details   = $this->get_transaction_details( $method_id, $is_sandbox );
+				$details   = $this->helper->get_transaction_details( $method_id, $is_sandbox );
 
 				if ( ! isset( $details['subscription'] ) ) {
 					break;
@@ -133,7 +141,7 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 			case 'net.authorize.payment.void.created':
 
 				$void_method_id = $webhook['payload']['id'];
-				$details        = $this->get_transaction_details( $void_method_id, $is_sandbox );
+				$details        = $this->helper->get_transaction_details( $void_method_id, $is_sandbox );
 				$method_id      = $details['reftransId'];
 
 				$transaction = it_exchange_get_transaction_by_method_id( 'authorizenet', $method_id );
@@ -147,132 +155,6 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		}
 
 		return new WP_HTTP_Response( null, 200 );
-	}
-
-	/**
-	 * Get details about a transaction in Auth.net
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param int  $method_id
-	 * @param bool $is_sandbox
-	 *
-	 * @return array
-	 */
-	public function get_transaction_details( $method_id, $is_sandbox ) {
-
-		$settings = $this->gateway->settings()->all();
-
-		$api_url      = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
-		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
-		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
-
-		$body = array(
-			'getTransactionDetailsRequest' => array(
-				'merchantAuthentication' => array(
-					'name'           => $api_username,
-					'transactionKey' => $api_password,
-				),
-				'transId'                => $method_id,
-			)
-		);
-
-		$query = array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-			),
-			'body'    => json_encode( $body ),
-			'timeout' => 30
-		);
-
-		$response = wp_remote_post( $api_url, $query );
-
-		if ( is_wp_error( $response ) ) {
-			throw new UnexpectedValueException( $response->get_error_message() );
-		}
-
-		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
-		$response = json_decode( $body, true );
-
-		$this->check_for_errors( $response );
-
-		return $response['transaction'];
-	}
-
-	/**
-	 * Get details about a subscription.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param int  $subscriber_id
-	 * @param bool $is_sandbox
-	 *
-	 * @return array
-	 * @throws \UnexpectedValueException
-	 */
-	protected function gwt_subscription_details( $subscriber_id, $is_sandbox ) {
-
-		$settings = $this->gateway->settings()->all();
-
-		$api_url      = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
-		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
-		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
-
-		$body = array(
-			'ARBGetSubscriptionRequest' => array(
-				'merchantAuthentication' => array(
-					'name'           => $api_username,
-					'transactionKey' => $api_password,
-				),
-				'subscriptionId'         => $subscriber_id,
-			)
-		);
-
-		$query = array(
-			'headers' => array(
-				'Content-Type' => 'application/json',
-			),
-			'body'    => json_encode( $body ),
-			'timeout' => 30
-		);
-
-		$response = wp_remote_post( $api_url, $query );
-
-		if ( is_wp_error( $response ) ) {
-			throw new UnexpectedValueException( $response->get_error_message() );
-		}
-
-		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
-		$response = json_decode( $body, true );
-
-		$this->check_for_errors( $response );
-
-		return $response['ARBGetSubscriptionResponse']['subscription'];
-	}
-
-	/**
-	 * Check for errors in the Auth.Net Response.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param array $response
-	 *
-	 * @throws UnexpectedValueException
-	 */
-	protected function check_for_errors( $response ) {
-		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
-			if ( ! empty( $response['messages']['message'] ) ) {
-				$error = reset( $response['messages']['message'] );
-
-				if ( $error && is_string( $error ) ) {
-					throw new UnexpectedValueException( $error );
-				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
-					throw new UnexpectedValueException( $error['text'] );
-				}
-			}
-
-			throw new UnexpectedValueException( 'Unknown error.' );
-		}
 	}
 
 	/**
