@@ -41,4 +41,5 @@ add_action( 'it_exchange_register_addons', 'it_exchange_register_authorizenet_ad
 function it_exchange_authorizenet_set_textdomain() {
 	load_plugin_textdomain( 'it-l10n-exchange-authorize_net', false, dirname( plugin_basename( __FILE__  ) ) . '/lang/' );
 }
-add_action( 'plugins_loaded', 'it_exchange_authorizenet_set_textdomain' );
+
+it_exchange_authorizenet_set_textdomain();
