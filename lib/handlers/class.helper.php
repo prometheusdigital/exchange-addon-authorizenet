@@ -132,7 +132,12 @@ class ITE_AuthorizeNet_Request_Helper {
 	 * @throws UnexpectedValueException
 	 */
 	public function check_for_errors( $response ) {
-		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
+
+		if ( ! isset( $response['messages'] ) ) {
+			return;
+		}
+
+		if ( isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] === 'Error' ) {
 			if ( ! empty( $response['messages']['message'] ) ) {
 				$error = reset( $response['messages']['message'] );
 
@@ -144,6 +149,14 @@ class ITE_AuthorizeNet_Request_Helper {
 			}
 
 			throw new UnexpectedValueException( 'Unknown error.' );
+		} elseif ( is_array( $response['messages'] ) ) {
+			$error = reset( $response['messages'] );
+
+			if ( isset( $error['description'] ) && is_string( $error['description'] ) ) {
+				throw new UnexpectedValueException( $error['description'] );
+			} elseif ( isset( $error['code'] ) ) {
+				throw new UnexpectedValueException( "Authorize.Net Error Code {$error['code']}" );
+			}
 		}
 	}
 

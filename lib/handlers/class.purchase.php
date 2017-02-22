@@ -29,16 +29,9 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 	 */
 	public function handle( $request ) {
 
-		$settings   = $this->get_gateway()->settings()->all();
 		$is_sandbox = $this->get_gateway()->is_sandbox_mode();
-
-		$api_url      = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
-		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
-		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
-
-		$cart         = $request->get_cart();
-		$customer     = $request->get_customer();
-		$reference_id = substr( it_exchange_create_unique_hash(), 20 );
+		$api_url    = $is_sandbox ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
+		$cart       = $request->get_cart();
 
 		$token = $card_payment = null;
 
@@ -63,107 +56,11 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		/** @var ITE_Cart_Product $subscription_product */
 		$sub_payment_schedule = $this->generate_payment_schedule( $request, $subscription_product );
 
-		if ( $sub_payment_schedule ) {
-
-			$total = $cart->get_total();
-			$fee   = $subscription_product->get_line_items()->with_only( 'fee' )
-			                              ->filter( function ( ITE_Fee_Line_Item $fee ) { return ! $fee->is_recurring(); } )
-			                              ->first();
-
-			if ( $fee ) {
-				$total += $fee->get_total() * - 1;
-			}
-
-			$body = array(
-				'ARBCreateSubscriptionRequest' => array(
-					'merchantAuthentication' => array(
-						'name'           => $api_username,
-						'transactionKey' => $api_password,
-					),
-					'refId'                  => $reference_id,
-					'subscription'           => array(
-						'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-						'paymentSchedule' => $sub_payment_schedule,
-						'amount'          => $total,
-						'order'           => array(
-							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-						),
-						'customer'        => array(
-							'id'    => $customer->ID,
-							'email' => $customer->get_email()
-						),
-						'billTo'          => $this->generate_bill_to( $cart ),
-					),
-				),
-			);
-
-			if ( $token ) {
-				$body['ARBCreateSubscriptionRequest']['subscription']['profile'] = array(
-					'customerProfileId'        => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
-					'customerPaymentProfileId' => $token->token,
-				);
-				unset( $body['ARBCreateSubscriptionRequest']['subscription']['billTo'] );
-				unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
-			} elseif ( $card_payment ) {
-				$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card_payment;
-			}
-
-			if ( $shipping = $this->generate_ship_to( $cart ) ) {
-				$body['ARBCreateSubscriptionRequest']['subscription']['shipTo'] = $shipping;
-			}
-
+		if ( $body = $this->generate_create_subscription( $request, $token, $card_payment ) ) {
+			$reference_id = $body['ARBCreateSubscriptionRequest']['refId'];
 		} else {
-			$body = array(
-				'createTransactionRequest' => array(
-					'merchantAuthentication' => array(
-						'name'           => $api_username,
-						'transactionKey' => $api_password,
-					),
-					'refId'                  => $reference_id,
-					'transactionRequest'     => array(
-						'transactionType' => 'authCaptureTransaction',
-						'amount'          => it_exchange_get_cart_total( false, array( 'cart' => $cart ) ),
-						'payment'         => null,
-						'profile'         => null,
-						'order'           => array(
-							'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
-						),
-						'customer'        => array(
-							'id'    => $customer->ID,
-							'email' => $customer->get_email(),
-						),
-						'billTo'          => $this->generate_bill_to( $cart ),
-					),
-				),
-			);
-
-			if ( $token ) {
-				$body['createTransactionRequest']['transactionRequest']['profile'] = array(
-					'customerProfileId' => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
-					'paymentProfile'    => array( 'paymentProfileId' => $token->token, ),
-				);
-				unset( $body['createTransactionRequest']['transactionRequest']['billTo'] );
-				unset( $body['createTransactionRequest']['transactionRequest']['payment'] );
-			} elseif ( $card_payment ) {
-				$body['createTransactionRequest']['transactionRequest']['payment'] = $card_payment;
-				unset( $body['createTransactionRequest']['transactionRequest']['profile'] );
-			}
-
-			if ( $shipping = $this->generate_ship_to( $cart ) ) {
-				$body['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
-			}
-
-			$body['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; // ecommerce
-			$body['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; // Website
-
-			if ( $settings['authorizenet-test-mode'] ) {
-				$body['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
-					'setting' => array(
-						'settingName'  => 'testRequest',
-						'settingValue' => true
-					)
-				);
-			}
+			$body         = $this->generate_create_transaction( $request, $token, $card_payment );
+			$reference_id = $body['createTransactionRequest']['refId'];
 		}
 
 		$body = apply_filters( 'it_exchange_authorizenet_transaction_fields', $body, $request );
@@ -186,8 +83,9 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			return null;
 		}
 
-		$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
-		$obj  = json_decode( $body, true );
+		$body        = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$obj         = json_decode( $body, true );
+		$transaction = isset( $obj['transactionResponse'] ) ? $obj['transactionResponse'] : null;
 
 		try {
 			$this->helper->check_for_errors( $obj );
@@ -197,8 +95,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			return null;
 		}
 
-		$transaction = isset( $obj['transactionResponse'] ) ? $obj['transactionResponse'] : null;
-
+		$txn_id   = null;
 		$txn_args = array();
 
 		if ( $request->get_card() ) {
@@ -223,15 +120,13 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					}
 				}
 			} else {
-				$error = '';
-				if ( ! empty( $transaction['messages'] ) ) {
-					foreach ( $transaction['messages'] as $message ) {
-						$error .= '<p>' . $message['text'] . '</p>';
-					}
-				}
 
-				if ( $error ) {
-					$cart->get_feedback()->add_error( $error );
+				if ( $transaction ) {
+					try {
+						$this->helper->check_for_errors( $transaction );
+					} catch ( Exception $e ) {
+						$cart->get_feedback()->add_error( $e->getMessage() );
+					}
 				}
 
 				return null;
@@ -250,29 +145,17 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					break;
 				case '2': //Declined
 				case '3': //Error
-
-					$error = '';
-
-					if ( ! empty( $transaction['messages'] ) ) {
-						foreach ( $transaction['messages'] as $message ) {
-							$error .= '<p>' . $message['description'] . '</p>';
-						}
-					}
-					if ( ! empty( $transaction['errors'] ) ) {
-						foreach ( $transaction['errors'] as $error ) {
-							$error .= '<p>' . $error['errorText'] . '</p>';
-						}
-					}
-
-					if ( $error ) {
-						$cart->get_feedback()->add_error( $error );
+					try {
+						$this->helper->check_for_errors( $transaction );
+					} catch ( Exception $e ) {
+						$cart->get_feedback()->add_error( $e->getMessage() );
 					}
 
 					return null;
 			}
 		}
 
-		if ( ! isset( $txn_id ) ) {
+		if ( ! $txn_id ) {
 			return null;
 		}
 
@@ -310,6 +193,187 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 		} else {
 			return it_exchange_add_transaction( 'authorizenet', $method_id, $status, $cart, null, $args );
 		}
+	}
+
+	/**
+	 * Generate the create transaction request body.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request $request
+	 * @param ITE_Payment_Token|null       $token
+	 * @param array|null                   $card_payment
+	 *
+	 * @return array
+	 */
+	protected function generate_create_transaction( ITE_Gateway_Purchase_Request $request, $token = null, $card_payment = null ) {
+
+		$customer = $request->get_customer();
+		$cart     = $request->get_cart();
+
+		$body = array(
+			'createTransactionRequest' => array(
+				'merchantAuthentication' => $this->generate_merchant_authentication( $request ),
+				'refId'                  => substr( it_exchange_create_unique_hash(), 20 ),
+				'transactionRequest'     => array(
+					'transactionType' => 'authCaptureTransaction',
+					'amount'          => $cart->get_total(),
+					'payment'         => null,
+					'profile'         => null,
+					'order'           => array(
+						'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
+					),
+					'customer'        => null,
+					'billTo'          => $this->generate_bill_to( $request->get_cart() ),
+				),
+			),
+		);
+
+		if ( $customer ) {
+			$body['createTransactionRequest']['transactionRequest']['customer'] = array(
+				'email' => $customer->get_email()
+			);
+
+			if ( is_numeric( $customer->get_ID() ) ) {
+				$body['createTransactionRequest']['transactionRequest']['customer'] = $customer->get_ID();
+			}
+		} else {
+			unset( $body['createTransactionRequest']['transactionRequest']['customer'] );
+		}
+
+		if ( $token ) {
+			$body['createTransactionRequest']['transactionRequest']['profile'] = array(
+				'customerProfileId' => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
+				'paymentProfile'    => array( 'paymentProfileId' => $token->token, ),
+			);
+			unset( $body['createTransactionRequest']['transactionRequest']['billTo'] );
+			unset( $body['createTransactionRequest']['transactionRequest']['payment'] );
+		} elseif ( $card_payment ) {
+			$body['createTransactionRequest']['transactionRequest']['payment'] = $card_payment;
+			unset( $body['createTransactionRequest']['transactionRequest']['profile'] );
+		}
+
+		if ( $shipping = $this->generate_ship_to( $cart ) ) {
+			$body['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
+		}
+
+		$body['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; // ecommerce
+		$body['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; // Website
+
+		$settings = $this->get_gateway()->settings()->all();
+
+		if ( ! empty( $settings['authorizenet-test-mode'] ) ) {
+			$body['createTransactionRequest']['transactionRequest']['transactionSettings'] = array(
+				'setting' => array(
+					'settingName'  => 'testRequest',
+					'settingValue' => true
+				)
+			);
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Generate create subscription request.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request $request
+	 * @param ITE_Payment_Token|null       $token
+	 * @param array|null                   $card_payment
+	 *
+	 * @return array
+	 */
+	protected function generate_create_subscription( ITE_Gateway_Purchase_Request $request, $token = null, $card_payment = null ) {
+
+		/** @var ITE_Cart_Product $subscription_product */
+		$sub_payment_schedule = $this->generate_payment_schedule( $request, $subscription_product );
+
+		if ( ! $sub_payment_schedule ) {
+			return array();
+		}
+
+		$cart     = $request->get_cart();
+		$customer = $request->get_customer();
+
+		$total = $cart->get_total();
+		$fee   = $subscription_product->get_line_items()->with_only( 'fee' )
+		                              ->filter( function ( ITE_Fee_Line_Item $fee ) { return ! $fee->is_recurring(); } )
+		                              ->first();
+
+		if ( $fee ) {
+			$total += $fee->get_total() * - 1;
+		}
+
+		$body = array(
+			'ARBCreateSubscriptionRequest' => array(
+				'merchantAuthentication' => $this->generate_merchant_authentication( $request ),
+				'refId'                  => substr( it_exchange_create_unique_hash(), 20 ),
+				'subscription'           => array(
+					'name'            => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
+					'paymentSchedule' => $sub_payment_schedule,
+					'amount'          => $total,
+					'order'           => array(
+						'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
+					),
+					'customer'        => null,
+					'billTo'          => $this->generate_bill_to( $cart ),
+				),
+			),
+		);
+
+		if ( $customer ) {
+			$body['ARBCreateSubscriptionRequest']['subscription']['customer'] = array(
+				'email' => $customer->get_email()
+			);
+
+			if ( is_numeric( $customer->get_ID() ) ) {
+				$body['ARBCreateSubscriptionRequest']['subscription']['customer'] = $customer->get_ID();
+			}
+		} else {
+			unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
+		}
+
+		if ( $token ) {
+			$body['ARBCreateSubscriptionRequest']['subscription']['profile'] = array(
+				'customerProfileId'        => it_exchange_authorizenet_get_customer_profile_id( $customer->get_ID() ),
+				'customerPaymentProfileId' => $token->token,
+			);
+			unset( $body['ARBCreateSubscriptionRequest']['subscription']['billTo'] );
+			unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
+		} elseif ( $card_payment ) {
+			$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $card_payment;
+		}
+
+		if ( $shipping = $this->generate_ship_to( $cart ) ) {
+			$body['ARBCreateSubscriptionRequest']['subscription']['shipTo'] = $shipping;
+		}
+
+		return $body;
+	}
+
+	/**
+	 * Generate the merchant authentication packet.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request $request
+	 *
+	 * @return array
+	 */
+	protected function generate_merchant_authentication( ITE_Gateway_Purchase_Request $request ) {
+
+		$settings   = $this->get_gateway()->settings()->all();
+		$is_sandbox = $this->get_gateway()->is_sandbox_mode();
+
+		$api_username = $is_sandbox ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
+		$api_password = $is_sandbox ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
+
+		return array(
+			'name'           => $api_username,
+			'transactionKey' => $api_password,
+		);
 	}
 
 	/**
