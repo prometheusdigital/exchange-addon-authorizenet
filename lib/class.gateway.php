@@ -358,6 +358,7 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 
 		switch ( $feature->get_feature_slug() ) {
 			case 'recurring-payments':
+			case 'one-time-fee':
 				return true;
 		}
 
@@ -370,6 +371,13 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	public function supports_feature_and_detail( ITE_Optionally_Supported_Feature $feature, $slug, $detail ) {
 
 		switch ( $feature->get_feature_slug() ) {
+			case 'one-time-fee':
+				switch ( $slug ) {
+					case 'discount':
+						return false;
+					default:
+						return false;
+				}
 			case 'recurring-payments':
 				switch ( $slug ) {
 					case 'profile':
