@@ -312,7 +312,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			unset( $body['createTransactionRequest']['transactionRequest']['profile'] );
 		}
 
-		if ( $shipping = $this->generate_ship_to( $cart ) ) {
+		if ( ! isset( $args['token'] ) && $shipping = $this->generate_ship_to( $cart ) ) {
 			$body['createTransactionRequest']['transactionRequest']['shipTo'] = $shipping;
 		}
 
@@ -406,7 +406,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			$body['ARBCreateSubscriptionRequest']['subscription']['payment'] = $args['card_payment'];
 		}
 
-		if ( $shipping = $this->generate_ship_to( $cart ) ) {
+		if ( ! isset( $args['token'] ) && $shipping = $this->generate_ship_to( $cart ) ) {
 			$body['ARBCreateSubscriptionRequest']['subscription']['shipTo'] = $shipping;
 		}
 
@@ -614,7 +614,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 		$shipping = $cart->get_shipping_address();
 
-		if ( ! $shipping ) {
+		if ( ! $shipping || empty( $shipping['address1'] ) ) {
 			return array();
 		}
 
