@@ -92,6 +92,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						return null;
 				}
 
+				unset( $body['createTransactionRequest'] );
 			}
 		} else {
 			$body         = $this->generate_create_transaction( $request, $request_args );
