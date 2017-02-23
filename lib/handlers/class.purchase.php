@@ -291,7 +291,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			);
 
 			if ( is_numeric( $customer->get_ID() ) ) {
-				$body['createTransactionRequest']['transactionRequest']['customer'] = $customer->get_ID();
+				$body['createTransactionRequest']['transactionRequest']['customer']['id'] = $customer->get_ID();
 			}
 		} else {
 			unset( $body['createTransactionRequest']['transactionRequest']['customer'] );
@@ -384,7 +384,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			);
 
 			if ( is_numeric( $customer->get_ID() ) ) {
-				$body['ARBCreateSubscriptionRequest']['subscription']['customer'] = $customer->get_ID();
+				$body['ARBCreateSubscriptionRequest']['subscription']['customer']['id'] = $customer->get_ID();
 			}
 		} else {
 			unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
