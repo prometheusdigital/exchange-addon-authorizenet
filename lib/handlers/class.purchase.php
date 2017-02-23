@@ -279,19 +279,21 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'order'           => array(
 						'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 					),
-					'customer'        => null,
+					'customer'        => array(
+						'id'    => null,
+						'email' => null,
+					),
 					'billTo'          => $this->generate_bill_to( $request->get_cart() ),
 				),
 			),
 		);
 
 		if ( $customer ) {
-			$body['createTransactionRequest']['transactionRequest']['customer'] = array(
-				'email' => $customer->get_email()
-			);
-
+			$body['createTransactionRequest']['transactionRequest']['customer']['email'] = $customer->get_email();
 			if ( is_numeric( $customer->get_ID() ) ) {
 				$body['createTransactionRequest']['transactionRequest']['customer']['id'] = $customer->get_ID();
+			} else {
+				unset( $body['createTransactionRequest']['transactionRequest']['customer']['id'] );
 			}
 		} else {
 			unset( $body['createTransactionRequest']['transactionRequest']['customer'] );
@@ -372,19 +374,21 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 					'order'           => array(
 						'description' => it_exchange_get_cart_description( array( 'cart' => $cart ) ),
 					),
-					'customer'        => null,
+					'customer'        => array(
+						'id'    => null,
+						'email' => null,
+					),
 					'billTo'          => $this->generate_bill_to( $cart ),
 				),
 			),
 		);
 
 		if ( $customer ) {
-			$body['ARBCreateSubscriptionRequest']['subscription']['customer'] = array(
-				'email' => $customer->get_email()
-			);
-
+			$body['ARBCreateSubscriptionRequest']['subscription']['customer']['email'] = $customer->get_email();
 			if ( is_numeric( $customer->get_ID() ) ) {
 				$body['ARBCreateSubscriptionRequest']['subscription']['customer']['id'] = $customer->get_ID();
+			} else {
+				unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer']['id'] );
 			}
 		} else {
 			unset( $body['ARBCreateSubscriptionRequest']['subscription']['customer'] );
