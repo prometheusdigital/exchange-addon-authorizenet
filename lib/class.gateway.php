@@ -87,6 +87,18 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * @inheritDoc
 	 */
+	public function get_payment_button_label() {
+
+		if ( $this->settings()->has( 'authorizenet-purchase-button-label' ) ) {
+			return $this->settings()->get( 'authorizenet-purchase-button-label' );
+		}
+
+		return parent::get_payment_button_label();
+	}
+
+	/**
+	 * @inheritDoc
+	 */
 	public function get_webhook_param() { return 'it_exchange_authorizenet'; }
 
 	/**
