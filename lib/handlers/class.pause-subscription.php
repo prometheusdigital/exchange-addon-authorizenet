@@ -31,10 +31,20 @@ class ITE_AuthorizeNet_Pause_Subscription_Handler implements ITE_Gateway_Request
 		);
 
 		if ( ! $cancelled ) {
+			it_exchange_log( 'Failed to pause Authorize.Met subscription #{sub_id} for transaction {txn_id}, subscription failed to cancel.', array(
+				'sub_id' => $subscription->get_subscriber_id(),
+				'txn_id' => $subscription->get_transaction()->get_ID(),
+				'_group' => 'subscription',
+			) );
 			return false;
 		}
 
 		$subscription->set_paused_by( $request->get_paused_by() );
+		it_exchange_log( 'Paused Authorize.Net subscription #{sub_id} for transaction {txn_id}.', ITE_Log_Levels::INFO, array(
+			'sub_id' => $subscription->get_subscriber_id(),
+			'txn_id' => $subscription->get_transaction()->get_ID(),
+			'_group' => 'subscription',
+		) );
 
 		return true;
 	}

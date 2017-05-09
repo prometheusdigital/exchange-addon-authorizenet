@@ -24,14 +24,14 @@ class ITE_AuthorizeNet_Resume_Subscription_Handler implements ITE_Gateway_Reques
 	 */
 	public function handle( $request ) {
 
-		$s = $request->get_subscription();
-		$transaction  = $s->get_transaction();
+		$s           = $request->get_subscription();
+		$transaction = $s->get_transaction();
 
 		if ( ! $s->get_payment_token() || ! $s->get_expiry_date() ) {
 			return false;
 		}
 
-		$repo = new ITE_Line_Item_Cached_Session_Repository(
+		$repo = new ITE_Cart_Cached_Session_Repository(
 			new IT_Exchange_In_Memory_Session( null ),
 			$request->get_customer(),
 			new ITE_Line_Item_Repository_Events()
@@ -52,11 +52,23 @@ class ITE_AuthorizeNet_Resume_Subscription_Handler implements ITE_Gateway_Reques
 			return $s->get_expiry_date()->getTimestamp();
 		} );
 
+		it_exchange_log( 'Making Authorize.Net subscription #{sub_id} renewal payment for transaction {txn_id}.', ITE_Log_Levels::DEBUG, array(
+			'sub_id' => $s->get_subscriber_id(),
+			'txn_id' => $s->get_transaction()->get_ID(),
+			'_group' => 'subscription',
+		) );
+
 		$transaction = $purchase_handler->handle( $purchase_request );
 
 		remove_filter( 'it_exchange_authorizenet_process_transaction_subscription_start_date', $fn );
 
 		if ( $transaction ) {
+			it_exchange_log( 'Resumed Authorize.Net subscription #{sub_id} for transaction {txn_id}.', ITE_Log_Levels::INFO, array(
+				'sub_id' => $s->get_subscriber_id(),
+				'txn_id' => $s->get_transaction()->get_ID(),
+				'_group' => 'subscription',
+			) );
+
 			return true;
 		}
 
@@ -64,11 +76,24 @@ class ITE_AuthorizeNet_Resume_Subscription_Handler implements ITE_Gateway_Reques
 			$message = '';
 
 			foreach ( $cart->get_feedback()->errors() as $error ) {
-				$message .= $error;
+				$message .= $error . ' ';
 			}
 
-			throw new UnexpectedValueException( $message );
+			it_exchange_log( 'Failed to resume Authorize.Net subscription #{sub_id} for transaction {txn_id}: {reason}.', array(
+				'sub_id' => $s->get_subscriber_id(),
+				'txn_id' => $s->get_transaction()->get_ID(),
+				'_group' => 'subscription',
+				'reason' => trim( $message ),
+			) );
+
+			throw new UnexpectedValueException( trim( $message ) );
 		}
+
+		it_exchange_log( 'Failed to resume Authorize.Net subscription #{sub_id} for transaction {txn_id}.', array(
+			'sub_id' => $s->get_subscriber_id(),
+			'txn_id' => $s->get_transaction()->get_ID(),
+			'_group' => 'subscription',
+		) );
 
 		return false;
 	}

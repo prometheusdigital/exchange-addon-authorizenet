@@ -80,7 +80,7 @@ class ITE_AuthorizeNet_Update_Subscription_Payment_Method_Handler implements ITE
 		) {
 
 			$cart = ITE_Cart::create(
-				new ITE_Line_Item_Cached_Session_Repository(
+				new ITE_Cart_Cached_Session_Repository(
 					new IT_Exchange_In_Memory_Session( null ),
 					$subscription->get_customer(),
 					new ITE_Line_Item_Repository_Events()

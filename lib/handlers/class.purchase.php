@@ -24,11 +24,24 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 	/**
 	 * @inheritDoc
+	 */
+	public function get_payment_button_label() {
+
+		if ( $this->get_gateway()->settings()->has( 'authorizenet-purchase-button-label' ) ) {
+			return $this->get_gateway()->settings()->get( 'authorizenet-purchase-button-label' );
+		}
+
+		return parent::get_payment_button_label();
+	}
+
+	/**
+	 * @inheritDoc
 	 *
 	 * @param ITE_Gateway_Purchase_Request $request
 	 */
 	public function handle( $request ) {
 
+		/** @var ITE_Payment_Token $token */
 		$token = $card_payment = null;
 
 		if ( $request->get_one_time_token() ) {
@@ -37,11 +50,21 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			$token = $request->get_token();
 		} elseif ( ( $tokenize = $request->get_tokenize() ) && $this->get_gateway()->can_handle( 'tokenize' ) ) {
 			$token = $this->get_gateway()->get_handler_for( $tokenize )->handle( $tokenize );
+
+			it_exchange_log( 'Created Authorize.Net token #{source} {label} via tokenize request for cart {cart_id}.', ITE_Log_Levels::DEBUG, array(
+				'_group'  => 'gateway',
+				'cart_id' => $request->get_cart()->get_id(),
+				'source'  => $token->token,
+				'label'   => $token->get_label(),
+			) );
 		} elseif ( $request->get_card() ) {
 			$card_payment = $this->generate_payment( $request );
 		} else {
-
 			$request->get_cart()->get_feedback()->add_error( __( 'Invalid payment method.', 'LION' ) );
+			it_exchange_log( 'No valid payment source given to Authorize.Net for cart {cart_id}.', array(
+				'cart_id' => $request->get_cart()->get_id(),
+				'_group'  => 'gateway',
+			) );
 
 			return null;
 		}
@@ -61,6 +84,10 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 
 			// this subscription requires a separate create transaction request
 			if ( isset( $body['createTransactionRequest'] ) ) {
+				it_exchange_log( 'Making Authorize.Net subscription request with initial transaction for cart {cart_id}.', ITE_Log_Levels::DEBUG, array(
+					'cart_id' => $request->get_cart()->get_id(),
+					'_group'  => 'gateway',
+				) );
 				$obj = $this->make_request( $request, array( 'createTransactionRequest' => $body['createTransactionRequest'] ) );
 
 				if ( ! $obj || ! isset( $obj['transactionResponse'] ) ) {
@@ -85,10 +112,16 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 							$this->helper->check_for_errors( $transaction );
 						} catch ( Exception $e ) {
 							$request->get_cart()->get_feedback()->add_error( $e->getMessage() );
+
+							if ( (int) $transaction['responseCode'] === 3 ) {
+								$this->failed_create_transaction( $request, $e );
+							}
 						}
 
 						return null;
 					default:
+						$this->unrecognized_response_code( $request, $transaction['responseCode'] );
+
 						return null;
 				}
 
@@ -139,6 +172,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						$this->helper->check_for_errors( $transaction );
 					} catch ( Exception $e ) {
 						$request->get_cart()->get_feedback()->add_error( $e->getMessage() );
+						$this->failed_create_transaction( $request, $e );
 					}
 				}
 
@@ -162,9 +196,15 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 						$this->helper->check_for_errors( $transaction );
 					} catch ( Exception $e ) {
 						$request->get_cart()->get_feedback()->add_error( $e->getMessage() );
+
+						if ( (int) $transaction['responseCode'] === 3 ) {
+							$this->failed_create_transaction( $request, $e );
+						}
 					}
 
 					return null;
+				default:
+					$this->unrecognized_response_code( $request, $transaction['responseCode'] );
 			}
 		}
 
@@ -172,7 +212,52 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			return null;
 		}
 
+		it_exchange_log( 'Authorize.Net payment for cart {cart_id} resulted in transaction {txn_id}', ITE_Log_Levels::INFO, array(
+			'txn_id'  => $txn_id,
+			'cart_id' => $request->get_cart()->get_id(),
+			'_group'  => 'gateway',
+		) );
+
 		return it_exchange_get_transaction( $txn_id );
+	}
+
+	/**
+	 * Generate an error due to an unrecognized response code from Auth.net.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request $request
+	 * @param int                          $code
+	 */
+	protected function unrecognized_response_code( ITE_Gateway_Purchase_Request $request, $code ) {
+		it_exchange_log(
+			'Authorize.Net payment for cart {cart_id} failed to create a transaction, unrecognized response code encountered: {code}.',
+			array(
+				'cart_id' => $request->get_cart()->get_id(),
+				'code'    => $code,
+				'_group'  => 'gateway',
+			)
+		);
+	}
+
+	/**
+	 * Generate an error if failed to create a transaction.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param ITE_Gateway_Purchase_Request $request
+	 * @param Exception                    $e
+	 */
+	protected function failed_create_transaction( ITE_Gateway_Purchase_Request $request, Exception $e ) {
+		it_exchange_log(
+			'Authorize.Net payment for cart {cart_id} failed to create a transaction: {exception}.',
+			ITE_Log_Levels::WARNING,
+			array(
+				'cart_id'   => $request->get_cart()->get_id(),
+				'exception' => $e,
+				'_group'    => 'gateway',
+			)
+		);
 	}
 
 	/**
@@ -228,13 +313,18 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 				'Content-Type' => 'application/json',
 			),
 			'body'    => json_encode( $body ),
-			'timeout' => 30
+			'timeout' => 30,
 		);
 
 		$response = wp_remote_post( $api_url, $query );
 
 		if ( is_wp_error( $response ) ) {
 			$request->get_cart()->get_feedback()->add_error( $response->get_error_message() );
+			it_exchange_log( 'Network error while making an Authorize.Net purchase request for cart {cart_id}: {error}', ITE_Log_Levels::WARNING, array(
+				'error'   => $response->get_error_message(),
+				'cart_id' => $request->get_cart()->get_id(),
+				'_group'  => 'gateway',
+			) );
 
 			return null;
 		}
@@ -246,6 +336,7 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			$this->helper->check_for_errors( $obj );
 		} catch ( Exception $e ) {
 			$request->get_cart()->get_feedback()->add_error( $e->getMessage() );
+			$this->failed_create_transaction( $request, $e );
 
 			return null;
 		}
@@ -659,5 +750,63 @@ class ITE_AuthorizeNet_Purchase_Request_Handler extends ITE_Dialog_Purchase_Requ
 			'zip'       => preg_replace( '/[^A-Za-z0-9\-]/', '', $billing['zip'] ),
 			'country'   => $country,
 		);
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function supports_feature( ITE_Optionally_Supported_Feature $feature ) {
+
+		switch ( $feature->get_feature_slug() ) {
+			case 'recurring-payments':
+			case 'one-time-fee':
+				return true;
+		}
+
+		return parent::supports_feature( $feature );
+	}
+
+	/**
+	 * @inheritDoc
+	 */
+	public function supports_feature_and_detail( ITE_Optionally_Supported_Feature $feature, $slug, $detail ) {
+
+		switch ( $feature->get_feature_slug() ) {
+			case 'one-time-fee':
+				switch ( $slug ) {
+					case 'discount':
+						return false;
+					default:
+						return false;
+				}
+			case 'recurring-payments':
+				switch ( $slug ) {
+					case 'profile':
+
+						/** @var $detail IT_Exchange_Recurring_Profile */
+						switch ( $detail->get_interval_type() ) {
+							case IT_Exchange_Recurring_Profile::TYPE_DAY:
+								return $detail->get_interval_count() >= 7 && $detail->get_interval_count() <= 365;
+							case IT_Exchange_Recurring_Profile::TYPE_WEEK:
+								return $detail->get_interval_count() <= 52;
+							case IT_Exchange_Recurring_Profile::TYPE_MONTH:
+								return $detail->get_interval_count() <= 12;
+							case IT_Exchange_Recurring_Profile::TYPE_YEAR:
+								return $detail->get_interval_count() <= 1;
+							default:
+								return false;
+						}
+
+					case 'auto-renew':
+					case 'trial':
+					case 'trial-profile':
+					case 'max-occurrences':
+						return true;
+					default:
+						return false;
+				}
+		}
+
+		return parent::supports_feature( $feature );
 	}
 }

@@ -87,18 +87,6 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 	/**
 	 * @inheritDoc
 	 */
-	public function get_payment_button_label() {
-
-		if ( $this->settings()->has( 'authorizenet-purchase-button-label' ) ) {
-			return $this->settings()->get( 'authorizenet-purchase-button-label' );
-		}
-
-		return parent::get_payment_button_label();
-	}
-
-	/**
-	 * @inheritDoc
-	 */
 	public function get_webhook_param() { return 'it_exchange_authorizenet'; }
 
 	/**
@@ -361,63 +349,5 @@ class ITE_AuthorizeNet_Gateway extends ITE_Gateway {
 		}
 
 		return $errors;
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function supports_feature( ITE_Optionally_Supported_Feature $feature ) {
-
-		switch ( $feature->get_feature_slug() ) {
-			case 'recurring-payments':
-			case 'one-time-fee':
-				return true;
-		}
-
-		return parent::supports_feature( $feature );
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function supports_feature_and_detail( ITE_Optionally_Supported_Feature $feature, $slug, $detail ) {
-
-		switch ( $feature->get_feature_slug() ) {
-			case 'one-time-fee':
-				switch ( $slug ) {
-					case 'discount':
-						return false;
-					default:
-						return false;
-				}
-			case 'recurring-payments':
-				switch ( $slug ) {
-					case 'profile':
-
-						/** @var $detail IT_Exchange_Recurring_Profile */
-						switch ( $detail->get_interval_type() ) {
-							case IT_Exchange_Recurring_Profile::TYPE_DAY:
-								return $detail->get_interval_count() >= 7 && $detail->get_interval_count() <= 365;
-							case IT_Exchange_Recurring_Profile::TYPE_WEEK:
-								return $detail->get_interval_count() <= 52;
-							case IT_Exchange_Recurring_Profile::TYPE_MONTH:
-								return $detail->get_interval_count() <= 12;
-							case IT_Exchange_Recurring_Profile::TYPE_YEAR:
-								return $detail->get_interval_count() <= 1;
-							default:
-								return false;
-						}
-
-					case 'auto-renew':
-					case 'trial':
-					case 'trial-profile':
-					case 'max-occurrences':
-						return true;
-					default:
-						return false;
-				}
-		}
-
-		return parent::supports_feature( $feature );
 	}
 }

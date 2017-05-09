@@ -88,6 +88,10 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 		$response = wp_remote_post( $api_url, $query );
 
 		if ( is_wp_error( $response ) ) {
+			it_exchange_log( 'Network error while refunding Authorize.Net payment: {error}', ITE_Log_Levels::WARNING, array(
+				'_group' => 'refund',
+				'error'  => $response->get_error_message()
+			) );
 			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
@@ -96,25 +100,49 @@ class ITE_AuthorizeNet_Refund_Request_Handler implements ITE_Gateway_Request_Han
 
 		if ( isset( $response['messages'], $response['messages']['resultCode'] ) && $response['messages']['resultCode'] === 'Error' ) {
 			if ( ! empty( $response['messages']['message'] ) ) {
-				$error = reset( $response['messages']['message'] );
+				$error   = reset( $response['messages']['message'] );
+				$message = '';
 
 				if ( $error && is_string( $error ) ) {
-					throw new UnexpectedValueException( $error );
+					$message = $error;
 				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
-					throw new UnexpectedValueException( $error['text'] );
+					$message = $error['text'];
+				}
+
+				it_exchange_log( 'Authorize.Net failed to create refund: {error}', ITE_Log_Levels::WARNING, array(
+					'_group' => 'refund',
+					'error'  => $message ?: wp_json_encode( $response['messages'] ),
+				) );
+
+				if ( $message ) {
+					throw new UnexpectedValueException( $message );
 				}
 			}
+
+			it_exchange_log( 'Authorize.Net failed to create refund: {response}', ITE_Log_Levels::WARNING, array(
+				'_group'   => 'refund',
+				'response' => wp_json_encode( $response ),
+			) );
 
 			return null;
 		}
 
-		return ITE_Refund::create( array(
+		$refund = ITE_Refund::create( array(
 			'transaction' => $transaction,
 			'amount'      => $request->get_amount(),
 			'gateway_id'  => $response['transactionResponse']['transId'],
 			'reason'      => $request->get_reason(),
 			'issued_by'   => $request->issued_by(),
 		) );
+
+		it_exchange_log( 'Created Authorize.Net refund of {amount} for transaction #{txn_id} and charge {charge}.', ITE_Log_Levels::DEBUG, array(
+			'amount' => $request->get_amount(),
+			'txn_id' => $transaction->get_ID(),
+			'charge' => $transaction->get_method_id(),
+			'_group' => 'refund',
+		) );
+
+		return $refund;
 	}
 
 	/**

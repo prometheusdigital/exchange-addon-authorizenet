@@ -32,16 +32,30 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	 * @inheritDoc
 	 *
 	 * @param ITE_Gateway_Tokenize_Request $request
+	 *
+	 * @throws \InvalidArgumentException
+	 * @throws \UnexpectedValueException
 	 */
 	public function handle( $request ) {
 
 		$customer_profile_id = it_exchange_authorizenet_get_customer_profile_id( $request->get_customer()->get_ID() );
 
-		if ( ! $customer_profile_id ) {
-			$customer_profile_id = $this->create_customer_profile( $request );
-		}
+		try {
+			if ( ! $customer_profile_id ) {
+				$customer_profile_id = $this->create_customer_profile( $request );
+			}
 
-		return $this->create_payment_profile( $customer_profile_id, $request );
+			return $this->create_payment_profile( $customer_profile_id, $request );
+		} catch ( UnexpectedValueException $e ) {
+
+			it_exchange_log( 'Authorize.Net returned unexpected response while creating token for {customer}: {exception}.', array(
+				'response' => $e,
+				'customer' => $request->get_customer()->get_ID(),
+				'_group'   => 'token',
+			) );
+
+			throw $e;
+		}
 	}
 
 	/**
@@ -53,12 +67,17 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	 * @param ITE_Gateway_Tokenize_Request $request
 	 *
 	 * @return ITE_Payment_Token
+	 * @throws \UnexpectedValueException
+	 * @throws \InvalidArgumentException
 	 */
 	protected function create_payment_profile( $customer_profile_id, ITE_Gateway_Tokenize_Request $request ) {
 
 		$payment = $this->generate_payment_profile( $request->get_source_to_tokenize() );
 
 		if ( ! $payment ) {
+			it_exchange_log( 'Not enough information provided to create Authorize.Net token.', array(
+				'_group' => 'token'
+			) );
 			throw new InvalidArgumentException( 'Invalid tokenization source.' );
 		}
 
@@ -96,13 +115,18 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 		$response = wp_remote_post( $this->get_api_url(), $query );
 
 		if ( is_wp_error( $response ) ) {
+			it_exchange_log( 'Network error while creating Authorize.Net payment profile for {profile_id}: {error}', ITE_Log_Levels::WARNING, array(
+				'_group'     => 'refund',
+				'error'      => $response->get_error_message(),
+				'profile_id' => $customer_profile_id,
+			) );
 			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
 		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 		$response = json_decode( $body, true );
 
-		$this->check_for_errors( $response );
+		$this->helper->check_for_errors( $response );
 
 		return $this->create_token( $response['customerPaymentProfileId'], $request );
 	}
@@ -115,12 +139,17 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	 * @param ITE_Gateway_Tokenize_Request $request
 	 *
 	 * @return ITE_Payment_Token
+	 * @throws \UnexpectedValueException
+	 * @throws \InvalidArgumentException
 	 */
 	protected function create_customer_profile( ITE_Gateway_Tokenize_Request $request ) {
 
 		$payment = $this->generate_payment_profile( $request->get_source_to_tokenize() );
 
 		if ( ! $payment ) {
+			it_exchange_log( 'Not enough information provided to create Authorize.Net token.', array(
+				'_group' => 'token'
+			) );
 			throw new InvalidArgumentException( 'Invalid tokenization source.' );
 		}
 
@@ -149,17 +178,33 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 		$response = wp_remote_post( $this->get_api_url(), $query );
 
 		if ( is_wp_error( $response ) ) {
+			it_exchange_log( 'Network error while creating Authorize.Net customer profile for #{customer}: {error}', ITE_Log_Levels::WARNING, array(
+				'_group'     => 'refund',
+				'error'      => $response->get_error_message(),
+				'profile_id' => $request->get_customer()->get_ID(),
+			) );
 			throw new UnexpectedValueException( $response->get_error_message() );
 		}
 
 		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 		$response = json_decode( $body, true );
 
-		$this->check_for_errors( $response );
+		$this->helper->check_for_errors( $response );
 
 		if ( empty( $response['customerProfileId'] ) ) {
+			it_exchange_log( 'Authorize.Net returned unexpected response while creating customer profile for #{customer}: {response}.', array(
+				'response' => wp_json_encode( $response ),
+				'customer' => $request->get_customer()->get_ID(),
+				'_group'   => 'token',
+			) );
 			throw new UnexpectedValueException( 'Unknown error.' );
 		}
+
+		it_exchange_log( 'Authorize.Net customer profile #{profile_id} created for #{customer}.', ITE_Log_Levels::DEBUG, array(
+			'profile_id' => $response['customerProfileId'],
+			'customer'   => $request->get_customer()->get_ID(),
+			'_group'     => 'token',
+		) );
 
 		it_exchange_authorizenet_set_customer_profile_id( $request->get_customer()->get_ID(), $response['customerProfileId'] );
 
@@ -175,6 +220,7 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 	 * @param int $payment_profile_id
 	 *
 	 * @return array
+	 * @throws \UnexpectedValueException
 	 */
 	protected function get_payment_profile_details( $customer_profile_id, $payment_profile_id ) {
 
@@ -204,34 +250,9 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 		$body     = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
 		$response = json_decode( $body, true );
 
-		$this->check_for_errors( $response );
+		$this->helper->check_for_errors( $response );
 
 		return $response['paymentProfile'];
-	}
-
-	/**
-	 * Check for errors in the Auth.Net Response.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param array $response
-	 *
-	 * @throws UnexpectedValueException
-	 */
-	protected function check_for_errors( $response ) {
-		if ( isset( $response['messages'] ) && isset( $response['messages']['resultCode'] ) && $response['messages']['resultCode'] == 'Error' ) {
-			if ( ! empty( $response['messages']['message'] ) ) {
-				$error = reset( $response['messages']['message'] );
-
-				if ( $error && is_string( $error ) ) {
-					throw new UnexpectedValueException( $error );
-				} elseif ( is_array( $error ) && isset( $error['text'] ) ) {
-					throw new UnexpectedValueException( $error['text'] );
-				}
-			}
-
-			throw new UnexpectedValueException( 'Unknown error.' );
-		}
 	}
 
 	/**
@@ -257,6 +278,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			'mode'     => $this->get_gateway()->is_sandbox_mode() ? 'sandbox' : 'live',
 		);
 
+		$for = 'unknown';
+
 		if ( is_string( $source ) ) {
 
 			$details = $this->get_payment_profile_details(
@@ -276,6 +299,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 				$token->set_expiration( $month, $year );
 			}
 
+			$for = 'Accept.JS';
+
 		} elseif ( $source instanceof ITE_Gateway_Card ) {
 			$attr['redacted'] = $source->get_redacted_number();
 
@@ -285,6 +310,8 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 				$token->set_expiration( $source->get_expiration_month(), $source->get_expiration_year() );
 			}
 
+			$for = 'card';
+
 		} elseif ( $source instanceof ITE_Gateway_Bank_Account ) {
 			$attr['redacted'] = $source->get_redacted_account_number();
 
@@ -293,11 +320,19 @@ class ITE_AuthorizeNet_Tokenize_Request_Handler implements ITE_Gateway_Request_H
 			if ( $token ) {
 				$token->set_account_type( $source->get_type() );
 			}
+
+			$for = 'bank account';
 		}
 
 		if ( $token && $request->should_set_as_primary() ) {
 			$token->make_primary();
 		}
+
+		it_exchange_log( 'Authorize.Net tokenize request for {for} resulted in token #{token}', ITE_Log_Levels::INFO, array(
+			'for'    => $for,
+			'token'  => $token->get_ID(),
+			'_group' => 'token',
+		) );
 
 		return $token;
 	}

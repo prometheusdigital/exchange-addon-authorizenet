@@ -67,21 +67,35 @@ class ITE_AuthorizeNet_Cancel_Subscription_Request_Handler implements ITE_Gatewa
 
 		// Make sure we update the subscription before the webhook handler does.
 		it_exchange_lock( "authorizenet-cancel-subscription-{$subscription->get_transaction()->ID}", 2 );
+		it_exchange_log( 'Acquiring Authorize.Net cancel subscription #{sub_id} lock for transaction #{txn_id}', ITE_Log_Levels::DEBUG, array(
+			'txn_id' => $subscription->get_transaction()->get_ID(),
+			'sub_id' => $subscription->get_subscriber_id(),
+			'_group' => 'subscription',
+		) );
+
 		$response = wp_remote_post( $api_url, $query );
 
-		if ( ! is_wp_error( $response ) ) {
-			$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
-			$obj  = json_decode( $body, true );
+		if ( is_wp_error( $response ) ) {
+			it_exchange_log( 'Network error while cancelling Authorize.Net subscription: {error}', ITE_Log_Levels::WARNING, array(
+				'_group' => 'refund',
+				'error'  => $response->get_error_message()
+			) );
 
-			if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] == 'Error' ) {
-				if ( ! empty( $obj['messages']['message'] ) ) {
-					$error = reset( $obj['messages']['message'] );
-
-					return false;
-				}
-			}
-		} else {
 			throw new UnexpectedValueException( $response->get_error_message() );
+		}
+
+		$body = preg_replace( '/\xEF\xBB\xBF/', '', $response['body'] );
+		$obj  = json_decode( $body, true );
+
+		if ( isset( $obj['messages'] ) && isset( $obj['messages']['resultCode'] ) && $obj['messages']['resultCode'] === 'Error' ) {
+			it_exchange_log( 'Failed to cancel Authorize.Net subscription #{sub_id} lock for transaction #{txn_id}: {response}', array(
+				'txn_id'   => $subscription->get_transaction()->get_ID(),
+				'sub_id'   => $subscription->get_subscriber_id(),
+				'response' => wp_json_encode( $obj['messages'] ),
+				'_group'   => 'subscription',
+			) );
+
+			return false;
 		}
 
 		if ( $request->should_set_status() ) {
@@ -97,6 +111,13 @@ class ITE_AuthorizeNet_Cancel_Subscription_Request_Handler implements ITE_Gatewa
 		}
 
 		it_exchange_release_lock( "authorizenet-cancel-subscription-{$subscription->get_transaction()->ID}" );
+
+		it_exchange_log( 'Cancelled Authorize.Net subscription #{sub_id} lock for transaction #{txn_id}', ITE_Log_Levels::INFO, array(
+			'txn_id' => $subscription->get_transaction()->get_ID(),
+			'sub_id' => $subscription->get_subscriber_id(),
+			'_group' => 'subscription',
+		) );
+
 
 		return true;
 	}

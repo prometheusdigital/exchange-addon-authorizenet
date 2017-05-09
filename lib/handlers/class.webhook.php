@@ -28,8 +28,9 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 	 * @param ITE_Gateway                     $gateway
 	 * @param ITE_AuthorizeNet_Request_Helper $helper
 	 */
-	public function __construct( ITE_Gateway $gateway, ITE_AuthorizeNet_Request_Helper $helper ) { $this->gateway = $gateway;
-		$this->helper = $helper;
+	public function __construct( ITE_Gateway $gateway, ITE_AuthorizeNet_Request_Helper $helper ) {
+		$this->gateway = $gateway;
+		$this->helper  = $helper;
 	}
 
 	/**
@@ -43,12 +44,21 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		$hash = $request->get_header( 'X-ANET-Signature' );
 
 		if ( ! $hash ) {
+			it_exchange_log( 'Authorize.Net webhook signature missing: {webhook}', array(
+				'webhook' => $body,
+				'_group'  => 'webhook',
+			) );
+
 			return new WP_HTTP_Response( null, 400 );
 		}
 
 		$setting = $this->gateway->is_sandbox_mode() ? 'sandbox-signature' : 'signature';
 
 		if ( ! $this->gateway->settings()->has( $setting ) || ! ( $signature = $this->gateway->settings()->get( $setting ) ) ) {
+			it_exchange_log( 'No Authorize.Net credentials provided.', ITE_Log_Levels::ALERT, array(
+				'_group' => 'webhook',
+			) );
+
 			return new WP_HTTP_Response( null, 500 );
 		}
 
@@ -57,12 +67,23 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		$computed_hash = hash_hmac( 'sha512', $body, $signature );
 
 		if ( ! hash_equals( strtolower( $hash ), strtolower( $computed_hash ) ) ) {
+			it_exchange_log( 'Authorize.Net webhook signature mismatch. Given: {given} Expected: {expected} - {webhook}', array(
+				'given'    => $hash,
+				'expected' => $computed_hash,
+				'webhook'  => $body,
+				'_group'   => 'webhook',
+			) );
+
 			return new WP_HTTP_Response( null, 400 );
 		}
 
 		$webhook = json_decode( $body, true );
 
 		if ( ! $webhook ) {
+			it_exchange_log( 'Authorize.Net webhook invalid payload.', array(
+				'_group' => 'webhook',
+			) );
+
 			return new WP_HTTP_Response( null, 400 );
 		}
 
@@ -73,8 +94,19 @@ class ITE_AuthorizeNet_Webhook_Handler implements ITE_Gateway_Request_Handler {
 		} elseif ( $webhook_id === $this->get_webhook_id( 'sandbox' ) ) {
 			$is_sandbox = true;
 		} else {
+			it_exchange_log( 'Authorize.Net webhook invalid webhook id {webhook_id}.', ITE_Log_Levels::DEBUG, array(
+				'_group'     => 'webhook',
+				'webhook_id' => $webhook_id,
+			) );
+
 			return new WP_HTTP_Response( null, 400 );
 		}
+
+		it_exchange_log( 'Authorize.Net processing {type} webhook {webhook}', ITE_Log_Levels::DEBUG, array(
+			'type'    => $webhook['eventType'],
+			'webhook' => wp_json_encode( $webhook ),
+			'_group'  => 'webhook'
+		) );
 
 		switch ( $webhook['eventType'] ) {
 			case 'net.authorize.customer.subscription.suspended':
