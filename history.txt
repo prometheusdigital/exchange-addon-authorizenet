@@ -37,3 +37,5 @@
 1.4.3 - 2016-06-03 - Timothy Jacobs
 	Add: Support for EVOSnap International accounts
 	Fix: Strip invalid characters from zip codes
+1.4.5 - 2017-06-27 - Timothy Jacobs
+	Fix: Guest Checkouts with email addresses longer than 20 characters.
