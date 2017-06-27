@@ -129,6 +129,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 			
 			$subscription = false;
 			$it_exchange_customer = it_exchange_get_current_customer();
+			$customer_id = is_numeric( $it_exchange_customer->ID ) ? $it_exchange_customer->ID : substr( md5( $it_exchange_customer->ID ), 0, 20 );
 			$reference_id = substr( it_exchange_create_unique_hash(), 20 );
 	
 			remove_filter( 'the_title', 'wptexturize' ); // remove this because it screws up the product titles in PayPal
@@ -268,7 +269,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 												'description'    => it_exchange_get_cart_description(),
 											),
 											'customer'       => array(
-												'id'               => $it_exchange_customer->ID,	
+												'id'               => $customer_id,	
 												'email'            => $it_exchange_customer->data->user_email,	
 											),
 											'billTo'         => array(
@@ -327,7 +328,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									'description'    => it_exchange_get_cart_description(),
 								),
 								'customer'       => array(
-									'id'               => $it_exchange_customer->ID,	
+									'id'               => $customer_id,	
 									'email'            => $it_exchange_customer->data->user_email,	
 								),
 								'billTo'         => array(
@@ -374,7 +375,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 								'description'    => it_exchange_get_cart_description(),
 							),
 							'customer'       => array(
-								'id'               => $it_exchange_customer->ID,	
+								'id'               => $customer_id,	
 								'email'               => $it_exchange_customer->data->user_email,	
 							),
 							'billTo'         => array(
