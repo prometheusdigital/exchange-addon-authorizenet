@@ -6,7 +6,7 @@
  * We've placed them all in one file to help add-on devs identify them more easily
 */
 
-//For verifying CC... 
+//For verifying CC...
 //incase a product doesn't have a shipping address and the shipping add-on is not enabled
 add_filter( 'it_exchange_billing_address_purchase_requirement_enabled', '__return_true' );
 
@@ -42,7 +42,7 @@ function it_exchange_refund_url_for_authorizenet( $url ) {
  * @return void
 */
 function it_exchange_authorizenet_addon_admin_enqueue_script( $hook ) {
-	if ( 'exchange_page_it-exchange-addons' === $hook 
+	if ( 'exchange_page_it-exchange-addons' === $hook
 		&& !empty( $_REQUEST['add-on-settings'] ) && 'authorizenet' === $_REQUEST['add-on-settings'] ) {
 	    wp_enqueue_script( 'authorizenet-addon-settings-js', ITUtility::get_url_from_file( dirname( __FILE__ ) ) . '/js/settings.js' );
 	    wp_enqueue_style( 'authorizenet-addon-settings-css', ITUtility::get_url_from_file( dirname( __FILE__ ) ) . '/css/settings.css' );
@@ -67,7 +67,7 @@ function it_exchange_authorizenet_addon_wp_enqueue_script() {
 add_action( 'wp_enqueue_scripts', 'it_exchange_authorizenet_addon_wp_enqueue_script' );
 
 /**
- * Adds actions to the plugins page for the iThemes Exchange Authorize.Net plugin
+ * Adds actions to the plugins page for the ExchangeWP Authorize.Net plugin
  *
  * @since 1.0.0
  *
@@ -121,17 +121,17 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	if ( ! empty( $_POST[it_exchange_get_field_name('transaction_method')] ) && 'authorizenet' == $_POST[it_exchange_get_field_name('transaction_method')] ) {
 		try {
 			$settings         = it_exchange_get_option( 'addon_authorizenet' );
-	
+
 			$api_url       = !empty( $settings['authorizenet-sandbox-mode'] ) ? AUTHORIZE_NET_AIM_API_SANDBOX_URL : AUTHORIZE_NET_AIM_API_LIVE_URL;
 			$api_username  = !empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-api-login-id'] : $settings['authorizenet-api-login-id'];
 			$api_password  = !empty( $settings['authorizenet-sandbox-mode'] ) ? $settings['authorizenet-sandbox-transaction-key'] : $settings['authorizenet-transaction-key'];
 			$it_exchange_customer = it_exchange_get_current_customer();
-			
+
 			$subscription = false;
 			$it_exchange_customer = it_exchange_get_current_customer();
 			$customer_id = is_numeric( $it_exchange_customer->ID ) ? $it_exchange_customer->ID : substr( md5( $it_exchange_customer->ID ), 0, 20 );
 			$reference_id = substr( it_exchange_create_unique_hash(), 20 );
-	
+
 			remove_filter( 'the_title', 'wptexturize' ); // remove this because it screws up the product titles in PayPal
 			$cart = it_exchange_get_cart_products();
 			if ( 1 === absint( count( $cart ) ) ) {
@@ -144,7 +144,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 							$auto_renew = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'auto-renew' ) );
 							$interval = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'interval' ) );
 							$interval_count = it_exchange_get_product_feature( $product['product_id'], 'recurring-payments', array( 'setting' => 'interval-count' ) );
-		
+
 							switch( $interval ) {
 								case 'year':
 									$duration = 12; //The max you can do in Authorize.Net is 12 months (1 year)
@@ -165,7 +165,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									break;
 							}
 							$duration = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_duration', $duration, $product );
-					
+
 							$trial_unit = NULL;
 							$trial_duration = 0;
 							if ( $trial_enabled ) {
@@ -181,12 +181,12 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 												if ( $prod_id === $product['product_id'] || in_array( $prod_id, $children ) || in_array( $prod_id, $parents ) ) {
 													$allow_trial = false;
 													break;
-												}								
+												}
 											}
 										}
 									}
 								}
-						
+
 								$allow_trial = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_allow_trial', $allow_trial, $product['product_id'] );
 								if ( $allow_trial && 0 < $trial_interval_count ) {
 									switch ( $trial_interval ) {
@@ -207,7 +207,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									$trial_duration = apply_filters( 'it_exchange_authorizenet_addon_process_transaction_subscription_trial_duration', $trial_duration, $product );
 								}
 							}
-							
+
 							$subscription = true;
 							$product_id = $product['product_id'];
 						}
@@ -220,7 +220,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 			} else {
 				$country = $transaction_object->billing_address['country'];
 			}
-			
+
 			$billing_zip = preg_replace( '/[^A-Za-z0-9\-]/', '', $transaction_object->billing_address['zip'] );
 
 			if ( ! empty( $transaction_object->shipping_address ) ) {
@@ -235,7 +235,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 					foreach( $cart as $product ) {
 						if ( !empty( $upgrade_downgrade[$product['product_id']] ) ) {
 							$product_id = $product['product_id'];
-							if (   !empty( $upgrade_downgrade[$product_id]['old_transaction_id'] ) 
+							if (   !empty( $upgrade_downgrade[$product_id]['old_transaction_id'] )
 								&& !empty( $upgrade_downgrade[$product_id]['old_transaction_method'] ) ) {
 								$transaction_fields = array(
 									'ARBUpdateSubscriptionRequest' => array(
@@ -269,8 +269,8 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 												'description'    => it_exchange_get_cart_description(),
 											),
 											'customer'       => array(
-												'id'               => $customer_id,	
-												'email'            => $it_exchange_customer->data->user_email,	
+												'id'               => $customer_id,
+												'email'            => $it_exchange_customer->data->user_email,
 											),
 											'billTo'         => array(
 												'firstName'        => $cc_data['first-name'],
@@ -287,14 +287,14 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 							}
 						}
 					}
-					
+
 					// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
 					if ( !empty( $transaction_object->shipping_address ) ) {
-						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
-						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
-						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];
 						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['zip']     = $shipping_zip;
-						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+						$transaction_fields['ARBUpdateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];
 					}
 				} else {
 					$transaction_fields = array(
@@ -328,8 +328,8 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 									'description'    => it_exchange_get_cart_description(),
 								),
 								'customer'       => array(
-									'id'               => $customer_id,	
-									'email'            => $it_exchange_customer->data->user_email,	
+									'id'               => $customer_id,
+									'email'            => $it_exchange_customer->data->user_email,
 								),
 								'billTo'         => array(
 									'firstName'        => $cc_data['first-name'],
@@ -343,14 +343,14 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 							),
 						),
 					);
-					
+
 					// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
 					if ( !empty( $transaction_object->shipping_address ) ) {
-						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
-						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
-						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['city']    = $transaction_object->shipping_address['city'];
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['state']   = $transaction_object->shipping_address['state'];
 						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['zip']     = $shipping_zip;
-						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+						$transaction_fields['ARBCreateSubscriptionRequest']['subscription']['shipTo']['country'] = $transaction_object->shipping_address['country'];
 					}
 				}
 			} else {
@@ -375,8 +375,8 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 								'description'    => it_exchange_get_cart_description(),
 							),
 							'customer'       => array(
-								'id'               => $customer_id,	
-								'email'               => $it_exchange_customer->data->user_email,	
+								'id'               => $customer_id,
+								'email'               => $it_exchange_customer->data->user_email,
 							),
 							'billTo'         => array(
 								'firstName'        => $cc_data['first-name'],
@@ -392,19 +392,19 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				);
 				// If we have the shipping info, we may as well include it in the fields sent to Authorize.Net
 				if ( !empty( $transaction_object->shipping_address ) ) {
-					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );                  
-					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['city']    = $transaction_object->shipping_address['city'];                        
-					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['state']   = $transaction_object->shipping_address['state'];                       
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['address'] = $transaction_object->shipping_address['address1'] . ( !empty( $transaction_object->shipping_address['address2'] ) ? ', ' . $transaction_object->shipping_address['address2'] : '' );
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['city']    = $transaction_object->shipping_address['city'];
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['state']   = $transaction_object->shipping_address['state'];
 					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['zip']     = $shipping_zip;
-					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['country'] = $transaction_object->shipping_address['country'];                     
+					$transaction_fields['createTransactionRequest']['transactionRequest']['shipTo']['country'] = $transaction_object->shipping_address['country'];
 				}
-				
+
 				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['marketType'] = 0; //ecommerce
 				$transaction_fields['createTransactionRequest']['transactionRequest']['retail']['deviceType'] = 8; //Website
 			}
-					
+
 			$transaction_fields = apply_filters( 'it_exchange_authorizenet_transaction_fields', $transaction_fields );
-			
+
 			$query = array(
 		        'headers' => array(
 		            'Content-Type' => 'application/json',
@@ -412,10 +412,10 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 	            'body' => json_encode( $transaction_fields ),
 				'timeout' => 30
 			);
-	
+
 			$response = wp_remote_post( $api_url, $query );
 
-			if ( !is_wp_error( $response ) ) {		
+			if ( !is_wp_error( $response ) ) {
 				$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
 				$obj = json_decode( $body, true );
 
@@ -445,7 +445,7 @@ function it_exchange_authorizenet_addon_process_transaction( $status, $transacti
 				} else {
 					$transaction = $obj['transactionResponse'];
 					$transaction_id = $transaction['transId'];
-					
+
 					switch( $transaction['responseCode'] ) {
 						case '1': //Approved
 						case '4': //Held for Review
@@ -494,13 +494,13 @@ add_action( 'it_exchange_do_transaction_authorizenet', 'it_exchange_authorizenet
  * with Authorize.net. So we don't want to cancel them here.
  *
  * @since 1.4.2
- * 
+ *
  * @param array $details
- * 
+ *
  * @throws Exception
  */
 function it_exchange_authorizenet_addon_cancel_subscription( $details ) {
-	
+
 	if ( empty( $details['subscription'] ) || ! $details['subscription'] instanceof IT_Exchange_Subscription ) {
 		return;
 	}
@@ -524,7 +524,7 @@ function it_exchange_authorizenet_addon_cancel_subscription( $details ) {
 			'subscriptionId' => $details['subscription']->get_subscriber_id()
 		),
 	);
-	
+
 	$query = array(
 		'headers' => array(
 			'Content-Type' => 'application/json',
@@ -533,7 +533,7 @@ function it_exchange_authorizenet_addon_cancel_subscription( $details ) {
 	);
 
 	$response = wp_remote_post( $api_url, $query );
-	
+
 	if ( ! is_wp_error( $response ) ) {
 		$body = preg_replace('/\xEF\xBB\xBF/', '', $response['body']);
 		$obj  = json_decode( $body, true );

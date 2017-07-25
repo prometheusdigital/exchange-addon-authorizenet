@@ -95,7 +95,7 @@ add_filter( 'it_storage_get_defaults_exchange_addon_authorizenet', 'it_exchange_
  *
  * @since 1.0.0
  *
- * @param array $default_currencies Array of default currencies supplied by iThemes Exchange
+ * @param array $default_currencies Array of default currencies supplied by ExchangeWP
  * @return array filtered list of currencies only supported by Authorize.Net
  */
 function it_exchange_authorizenet_addon_get_currency_options( $default_currencies ) {
@@ -150,6 +150,14 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			add_action( 'it_exchange_save_add_on_settings_authorizenet', array( $this, 'save_settings' ) );
 			do_action( 'it_exchange_save_add_on_settings_authorizenet' );
 		}
+
+		// Creates our option in the database
+		add_action( 'admin_init', array( $this, 'exchange_authorizenet_plugin_updater', 0 ) );
+		add_action( 'admin_init', array( $this, 'exchange_authorizenet_register_option' ) );
+		add_action( 'admin_notices', array( $this, 'exchange_authorizenet_admin_notices' ) );
+		add_action( 'admin_init', array( $this, 'exchange_authorizenet_deactivate_license' ) );
+		add_action( 'admin_init', array( $this, 'exchange_authorizenet_deactivate_license' ) );
+		add_action( 'admin_init', array( $this, 'exchange_authorizenet_activate_license' ) );
 	}
 
 	/**
@@ -218,11 +226,36 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<?php _e( 'Don\'t have an Authorize.Net account yet?', 'LION' ); ?> <a href="http://authorize.net" target="_blank"><?php _e( 'Go set one up here', 'LION' ); ?></a>.
 				<span class="tip" title="<?php _e( 'Enabling Authorize.Net limits your currency options to United States Dollars and Canadian Dollars.', 'LION' ); ?>">i</span>
 			</p>
+			<h4>License Key</h4>
+
+            <?php
+                $exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
+                $license = $exchangewp_authorizenet_options['authorizenet_license'];
+                // var_dump($license);
+								// die();
+                $exstatus = trim( get_option( 'exchange_authorizenet_license_status' ) );
+                // var_dump($exstatus);
+             ?>
+            <p>
+              <label class="description" for="exchange_authorizenet_license_key"><?php _e('Enter your license key'); ?></label>
+              <!-- <input id="authorizenet_license" name="it-exchange-add-on-authorizenet-authorizenet_license" type="text" value="<?php #esc_attr_e( $license ); ?>" /> -->
+              <?php $form->add_text_box( 'authorizenet_license' ); ?>
+              <span>
+                <?php if( $exstatus !== false && $exstatus == 'valid' ) { ?>
+    							<span style="color:green;"><?php _e('active'); ?></span>
+    							<?php wp_nonce_field( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ); ?>
+    							<input type="submit" class="button-secondary" name="exchange_authorizenet_license_deactivate" value="<?php _e('Deactivate License'); ?>"/>
+    						<?php } else {
+    							wp_nonce_field( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ); ?>
+    							<input type="submit" class="button-secondary" name="exchange_authorizenet_license_activate" value="<?php _e('Activate License'); ?>"/>
+    						<?php } ?>
+              </span>
+            </p>
 			<?php
 				if ( ! in_array( $general_settings['default-currency'], array_keys( $this->get_supported_currency_options() ) ) )
 					echo '<h4>' . sprintf( __( 'You are currently using a currency that is not supported by Authorize.net. <a href="%s">Please update your currency settings</a>.', 'LION' ), esc_url( add_query_arg( 'page', 'it-exchange-settings' ) ) ) . '</h4>';
 			?>
-			<h4><?php _e( 'Step 1. Fill out your Authorize.Net API Credentials', 'LION' ); ?></h4>
+			<h4><?php _e( 'Fill out your Authorize.Net API Credentials', 'LION' ); ?></h4>
 			<p>
 				<label for="authorizenet-api-login-id"><?php _e( 'API Login ID', 'LION' ); ?> <span class="tip" title="<?php _e( 'Your API Login ID can be found under the Setting Menu on your Merchant Interface (on your Authorize.net account).  Follow the instructions provided by Authorize.net to find your API Login and Transaction Key.', 'LION' ); ?>">i</span></label>
 				<?php $form->add_text_box( 'authorizenet-api-login-id' ); ?>
@@ -240,11 +273,11 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<label for="evosnap-international"><?php _e( 'EVOSnap International Account', 'LION' ); ?> <span class="tip" title="<?php _e( "Mark yes if your Authorize.net payment processor is an EVOSnap International account. If you don't know what your payment processor is, contact Authorize.net.", 'LION' ); ?>">i</span></label>
 			</p>
 
-            <h4><?php _e( 'Step 2. Setup Authorize.Net Silent Post URL', 'LION' ); ?></h4>
+            <h4><?php _e( 'Setup Authorize.Net Silent Post URL', 'LION' ); ?></h4>
             <p><?php _e( 'The Silent Post URL can be configured in the Account section of the Authorize.Net dashboard. Click "Silent Post URL" to reveal a form to add a new URL for receiving a Silent Post.', 'LION' ); ?></p>
-            <p><?php _e( 'Please log in to your account and add this URL to your Silent Post URL so iThemes Exchange is notified of things like refunds, payments, etc.', 'LION' ); ?></p>
+            <p><?php _e( 'Please log in to your account and add this URL to your Silent Post URL so ExchangeWP is notified of things like refunds, payments, etc.', 'LION' ); ?></p>
             <code><?php echo get_site_url(); ?>/?<?php esc_attr_e( it_exchange_get_webhook( 'authorizenet' ) ); ?>=1</code>
-            
+
 			<h4><?php _e( 'Optional: Edit Purchase Button Label', 'LION' ); ?></h4>
 			<p>
 				<label for="authorizenet-purchase-button-label"><?php _e( 'Purchase Button Label', 'LION' ); ?> <span class="tip" title="<?php _e( 'This is the text inside the button your customers will press to purchase with Authorize.net', 'LION' ); ?>">i</span></label>
@@ -256,7 +289,7 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<?php $form->add_check_box( 'authorizenet-test-mode', array( 'class' => 'show-test-mode-options' ) ); ?>
 				<label for="authorizenet-test-mode"><?php _e( 'Enable Test Mode?', 'LION' ); ?> <span class="tip" title="<?php _e( 'Use this mode for testing your store with Live credentials. This mode will need to be disabled when the store is ready to process customer payments.', 'LION' ); ?>">i</span></label>
 			</p>
-			
+
 			<h4 class="hide-if-wizard"><?php _e( 'Sandbox Mode:', 'LION' ); ?></h4>
 			<p class="hide-if-wizard">
 				<?php $form->add_check_box( 'authorizenet-sandbox-mode', array( 'class' => 'show-sandbox-mode-options' ) ); ?>
@@ -303,6 +336,188 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			$this->error_message = $errors;
 		} else {
 			$this->status_message = __( 'Settings not saved.', 'LION' );
+		}
+
+		// This is for all things licensing check
+		// listen for our activate button to be clicked
+		if( isset( $_POST['exchange_authorizenet_license_activate'] ) ) {
+
+			// run a quick security check
+			if( ! check_admin_referer( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ) )
+				return; // get out if we didn't click the Activate button
+
+			// retrieve the license from the database
+			// $license = trim( get_option( 'exchange_authorizenet_license_key' ) );
+			$exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
+			$license = trim( $exchangewp_authorizenet_options['authorizenet_license'] );
+
+			// data to send in our API request
+			$api_params = array(
+				'edd_action' => 'activate_license',
+				'license'    => $license,
+				'item_name'  => urlencode( 'authorize-net' ), // the name of our product in EDD
+				'url'        => home_url()
+			);
+			
+			// Call the custom API.
+			$response = wp_remote_post( 'https://exchangewp.com', array( 'timeout' => 15, 'sslverify' => false, 'body' => $api_params ) );
+
+			// make sure the response came back okay
+			if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+
+				if ( is_wp_error( $response ) ) {
+					$message = $response->get_error_message();
+				} else {
+					$message = __( 'An error occurred, please try again.' );
+				}
+
+			} else {
+
+				$license_data = json_decode( wp_remote_retrieve_body( $response ) );
+
+				if ( false === $license_data->success ) {
+
+					switch( $license_data->error ) {
+
+						case 'expired' :
+
+							$message = sprintf(
+								__( 'Your license key expired on %s.' ),
+								date_i18n( get_option( 'date_format' ), strtotime( $license_data->expires, current_time( 'timestamp' ) ) )
+							);
+							break;
+
+						case 'revoked' :
+
+							$message = __( 'Your license key has been disabled.' );
+							break;
+
+						case 'missing' :
+
+							$message = __( 'Invalid license.' );
+							break;
+
+						case 'invalid' :
+						case 'site_inactive' :
+
+							$message = __( 'Your license is not active for this URL.' );
+							break;
+
+						case 'item_name_mismatch' :
+
+							$message = sprintf( __( 'This appears to be an invalid license key for %s.' ), 'authorizenet' );
+							break;
+
+						case 'no_activations_left':
+
+							$message = __( 'Your license key has reached its activation limit.' );
+							break;
+
+						default :
+
+							$message = __( 'An error occurred, please try again.' );
+							break;
+					}
+
+				}
+
+			}
+
+			// Check if anything passed on a message constituting a failure
+			if ( ! empty( $message ) ) {
+				$base_url = admin_url( 'admin.php?page=' . 'authorizenet-license' );
+				$redirect = add_query_arg( array( 'sl_activation' => 'false', 'message' => urlencode( $message ) ), $base_url );
+
+				wp_redirect( $redirect );
+				exit();
+			}
+
+			//$license_data->license will be either "valid" or "invalid"
+			update_option( 'exchange_authorizenet_license_status', $license_data->license );
+			// wp_redirect( admin_url( 'admin.php?page=' . 'authorizenet-license' ) );
+			exit();
+		}
+
+		// deactivate here
+		// listen for our activate button to be clicked
+		if( isset( $_POST['exchange_authorizenet_license_deactivate'] ) ) {
+
+			// run a quick security check
+			if( ! check_admin_referer( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ) )
+				return; // get out if we didn't click the Activate button
+
+			// retrieve the license from the database
+			// $license = trim( get_option( 'exchange_authorizenet_license_key' ) );
+
+			$exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
+			$license = $exchangewp_authorizenet_options['authorizenet_license'];
+
+
+			// data to send in our API request
+			$api_params = array(
+				'edd_action' => 'deactivate_license',
+				'license'    => $license,
+				'item_name'  => urlencode( 'authorizenet' ), // the name of our product in EDD
+				'url'        => home_url()
+			);
+			// Call the custom API.
+			$response = wp_remote_post( 'https://exchangewp.com', array( 'timeout' => 15, 'sslverify' => false, 'body' => $api_params ) );
+
+			// make sure the response came back okay
+			if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
+
+				if ( is_wp_error( $response ) ) {
+					$message = $response->get_error_message();
+				} else {
+					$message = __( 'An error occurred, please try again.' );
+				}
+
+				// $base_url = admin_url( 'admin.php?page=' . 'authorizenet-license' );
+				// $redirect = add_query_arg( array( 'sl_activation' => 'false', 'message' => urlencode( $message ) ), $base_url );
+
+				wp_redirect( 'admin.php?page=authorizenet-license' );
+				exit();
+			}
+
+			// decode the license data
+			$license_data = json_decode( wp_remote_retrieve_body( $response ) );
+			// $license_data->license will be either "deactivated" or "failed"
+			if( $license_data->license == 'deactivated' ) {
+				delete_option( 'exchange_authorizenet_license_status' );
+			}
+
+			// wp_redirect( admin_url( 'admin.php?page=' . 'authorizenet-license' ) );
+			exit();
+
+		}
+
+	}
+
+	/**
+	 * This is a means of catching errors from the activation method above and displaying it to the customer
+	 *
+	 * @since 1.2.2
+	 */
+	function exchange_authorizenet_admin_notices() {
+		if ( isset( $_GET['sl_activation'] ) && ! empty( $_GET['message'] ) ) {
+
+			switch( $_GET['sl_activation'] ) {
+
+				case 'false':
+					$message = urldecode( $_GET['message'] );
+					?>
+					<div class="error">
+						<p><?php echo $message; ?></p>
+					</div>
+					<?php
+					break;
+
+				case 'true':
+				default:
+					// Developers can put a custom success message here for when activation is successful if they way.
+					break;
+
+			}
 		}
 	}
 
@@ -374,23 +589,23 @@ class IT_Exchange_AuthorizeNet_Add_On {
 		if ( empty( $values['authorizenet-purchase-button-label'] ) ) {
 			$errors[] = __( 'Please include a label for the purchase button', 'LION' );
 		}
-		
+
 		if ( !empty( $values['authorizenet-sandbox-mode'] ) ) {
-			
+
 			if ( empty( $values['authorizenet-sandbox-api-login-id'] ) ) {
 				$errors[] = __( 'Please include your Sandbox API Login ID', 'LION' );
 			}
-	
+
 			if ( empty( $values['authorizenet-sandbox-transaction-key'] ) ) {
 				$errors[] = __( 'Please include your Sandbox Transaction Key', 'LION' );
 			}
-	
+
 			if ( empty( $values['authorizenet-sandbox-md5-hash'] ) ) {
 				$errors[] = __( 'Please include your Sandbox MD5 Hash Value', 'LION' );
 			}
-			
+
 		}
-			
+
 		return $errors;
 	}
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * iThemes Exchange Authorize.Net Add-on
+ * ExchangeWP Authorize.Net Add-on
  * @package IT_Exchange_Addon_AuthorizeNet
  * @since 1.0.0
 */
@@ -33,7 +33,7 @@ include( 'lib/addon-settings.php' );
 /**
  * Most Payment Gateway APIs use some concept of webhooks or notifications to communicate with
  * clients. While add-ons are not required to use the Exchange API, we have created a couple of functions
- * to register and listen for these webooks. The stripe add-on uses this API and we have placed the 
+ * to register and listen for these webooks. The stripe add-on uses this API and we have placed the
  * registering and processing functions in this file.
 */
 include( 'lib/addon-webhooks.php' );
