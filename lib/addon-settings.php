@@ -82,6 +82,7 @@ function it_exchange_authorizenet_addon_default_settings( $values ) {
 		'authorizenet-sandbox-api-login-id'    => '',
 		'authorizenet-sandbox-transaction-key' => '',
 		'authorizenet-sandbox-md5-hash'        => '',
+		'authorizenet_license'								 => '',
 		'authorizenet-purchase-button-label'   => __( 'Purchase', 'LION' ),
 		'evosnap-international'                => false
 	);
@@ -358,7 +359,7 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				'item_name'  => urlencode( 'authorize-net' ), // the name of our product in EDD
 				'url'        => home_url()
 			);
-			
+
 			// Call the custom API.
 			$response = wp_remote_post( 'https://exchangewp.com', array( 'timeout' => 15, 'sslverify' => false, 'body' => $api_params ) );
 
