@@ -1,25 +1,26 @@
 <?php
 /*
- * Plugin Name: iThemes Exchange - Authorize.Net Add-on
- * Version: 1.4.4
+ * Plugin Name: ExchangeWP - Authorize.Net Add-on
+ * Version: 1.4.5
  * Description: Adds the ability for users to checkout with Authorize.Net.
- * Plugin URI: http://ithemes.com/exchange/authorize-net/
- * Author: iThemes
- * Author URI: http://ithemes.com
- * iThemes Package: exchange-addon-authorizenet
+ * Plugin URI: https://exchangewp.com/downloads/authorize-net/
+ * Author: ExchangeWP
+ * Author URI: https://exchangewp.com
+ * ExchangeWP Package: exchange-addon-authorizenet
 
  * Installation:
  * 1. Download and unzip the latest release zip file.
  * 2. If you use the WordPress plugin uploader to install this plugin skip to step 4.
  * 3. Upload the entire plugin directory to your `/wp-content/plugins/` directory.
  * 4. Activate the plugin through the 'Plugins' menu in WordPress Administration.
+ * 5. Add License key to plugins page.
  *
 */
 
 /**
  * This registers our plugin as an Authorize.Net addon
  *
- * To learn how to create your own-addon, visit http://ithemes.com/codex/page/Exchange_Custom_Add-ons:_Overview
+ * To learn how to create your own-addon, visit TODO: Need to add this link back.
  *
  * @since 1.0.0
  *
@@ -29,8 +30,8 @@ function it_exchange_register_authorizenet_addon() {
 	$options = array(
 		'name'              => __( 'Authorize.Net', 'LION' ),
 		'description'       => __( 'Process transactions via Authorize.Net, a robust and powerful payment gateway.', 'LION' ),
-		'author'            => 'iThemes',
-		'author_url'        => 'http://ithemes.com/exchange/authorize_net/',
+		'author'            => 'ExchangeWP',
+		'author_url'        => 'https://exchangewp.com/downloads/authorize-net/',
 		'icon'              => ITUtility::get_url_from_file( dirname( __FILE__ ) . '/lib/images/authorize-net.png' ),
 		'wizard-icon'       => ITUtility::get_url_from_file( dirname( __FILE__ ) . '/lib/images/authorize-settings.png' ),
 		'file'              => dirname( __FILE__ ) . '/init.php',
@@ -66,7 +67,7 @@ function ithemes_exchange_addon_authorizenet_updater_register( $updater ) {
 	$updater->register( 'exchange-addon-authorizenet', __FILE__ );
 }
 add_action( 'ithemes_updater_register', 'ithemes_exchange_addon_authorizenet_updater_register' );
-require( dirname( __FILE__ ) . '/lib/updater/load.php' );
+// require( dirname( __FILE__ ) . '/lib/updater/load.php' );
 
 function ithemes_exchange_authorizenet_deactivate() {
 	if ( empty( $_GET['remove-gateway'] ) || 'yes' !== $_GET['remove-gateway'] ) {
@@ -82,3 +83,33 @@ function ithemes_exchange_authorizenet_deactivate() {
 	}
 }
 register_deactivation_hook( __FILE__, 'ithemes_exchange_authorizenet_deactivate' );
+
+if ( ! class_exists( 'EDD_SL_Plugin_Updater' ) )  {
+	require_once 'EDD_SL_Plugin_Updater.php';
+}
+
+function exchange_authorizenet_plugin_updater() {
+
+	// retrieve our license key from the DB
+	// this is going to have to be pulled from a seralized array to get the actual key.
+	// $license_key = trim( get_option( 'exchange_2checkout_license_key' ) );
+	$exchangewp_2checkout_options = get_option( 'it-storage-exchange_addon_authorizenet' );
+	$license_key = $exchangewp_2checkout_options['authorizenet_license'];
+
+	// setup the updater
+	$edd_updater = new EDD_SL_Plugin_Updater( 'https://exchangewp.com', __FILE__, array(
+			'version' 		=> '1.4.5', 				// current version number
+			'license' 		=> $license_key, 		// license key (used get_option above to retrieve from DB)
+			'item_name' 	=> 'authorize-net', 	  // name of this plugin
+			'author' 	  	=> 'ExchangeWP',    // author of this plugin
+			'url'       	=> home_url(),
+			'wp_override' => true,
+			'beta'		  	=> false
+		)
+	);
+	// var_dump($edd_updater);
+	// die();
+
+}
+
+add_action( 'admin_init', 'exchange_authorizenet_plugin_updater', 0 );
