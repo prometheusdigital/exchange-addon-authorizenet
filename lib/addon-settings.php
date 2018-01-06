@@ -82,7 +82,6 @@ function it_exchange_authorizenet_addon_default_settings( $values ) {
 		'authorizenet-sandbox-api-login-id'    => '',
 		'authorizenet-sandbox-transaction-key' => '',
 		'authorizenet-sandbox-md5-hash'        => '',
-		'authorizenet_license'								 => '',
 		'authorizenet-purchase-button-label'   => __( 'Purchase', 'LION' ),
 		'evosnap-international'                => false
 	);
@@ -156,10 +155,6 @@ class IT_Exchange_AuthorizeNet_Add_On {
 		add_action( 'admin_init', array( $this, 'exchange_authorizenet_plugin_updater', 0 ) );
 		add_action( 'admin_init', array( $this, 'exchange_authorizenet_register_option' ) );
 		add_action( 'admin_notices', array( $this, 'exchange_authorizenet_admin_notices' ) );
-		add_action( 'admin_init', array( $this, 'exchange_authorizenet_deactivate_license' ) );
-		add_action( 'admin_init', array( $this, 'exchange_authorizenet_deactivate_license' ) );
-		add_action( 'admin_init', array( $this, 'exchange_authorizenet_activate_license' ) );
-	}
 
 	/**
 	 * Prints settings page
@@ -227,31 +222,6 @@ class IT_Exchange_AuthorizeNet_Add_On {
 				<?php _e( 'Don\'t have an Authorize.Net account yet?', 'LION' ); ?> <a href="http://authorize.net" target="_blank"><?php _e( 'Go set one up here', 'LION' ); ?></a>.
 				<span class="tip" title="<?php _e( 'Enabling Authorize.Net limits your currency options to United States Dollars and Canadian Dollars.', 'LION' ); ?>">i</span>
 			</p>
-			<h4>License Key</h4>
-
-            <?php
-                $exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
-                $license = $exchangewp_authorizenet_options['authorizenet_license'];
-                // var_dump($license);
-								// die();
-                $exstatus = trim( get_option( 'exchange_authorizenet_license_status' ) );
-                // var_dump($exstatus);
-             ?>
-            <p>
-              <label class="description" for="exchange_authorizenet_license_key"><?php _e('Enter your license key'); ?></label>
-              <!-- <input id="authorizenet_license" name="it-exchange-add-on-authorizenet-authorizenet_license" type="text" value="<?php #esc_attr_e( $license ); ?>" /> -->
-              <?php $form->add_text_box( 'authorizenet_license' ); ?>
-              <span>
-                <?php if( $exstatus !== false && $exstatus == 'valid' ) { ?>
-    							<span style="color:green;"><?php _e('active'); ?></span>
-    							<?php wp_nonce_field( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ); ?>
-    							<input type="submit" class="button-secondary" name="exchange_authorizenet_license_deactivate" value="<?php _e('Deactivate License'); ?>"/>
-    						<?php } else {
-    							wp_nonce_field( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ); ?>
-    							<input type="submit" class="button-secondary" name="exchange_authorizenet_license_activate" value="<?php _e('Activate License'); ?>"/>
-    						<?php } ?>
-              </span>
-            </p>
 			<?php
 				if ( ! in_array( $general_settings['default-currency'], array_keys( $this->get_supported_currency_options() ) ) )
 					echo '<h4>' . sprintf( __( 'You are currently using a currency that is not supported by Authorize.net. <a href="%s">Please update your currency settings</a>.', 'LION' ), esc_url( add_query_arg( 'page', 'it-exchange-settings' ) ) ) . '</h4>';
@@ -337,159 +307,6 @@ class IT_Exchange_AuthorizeNet_Add_On {
 			$this->error_message = $errors;
 		} else {
 			$this->status_message = __( 'Settings not saved.', 'LION' );
-		}
-
-		// This is for all things licensing check
-		// listen for our activate button to be clicked
-		if( isset( $_POST['exchange_authorizenet_license_activate'] ) ) {
-
-			// run a quick security check
-			if( ! check_admin_referer( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ) )
-				return; // get out if we didn't click the Activate button
-
-			// retrieve the license from the database
-			// $license = trim( get_option( 'exchange_authorizenet_license_key' ) );
-			$exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
-			$license = trim( $exchangewp_authorizenet_options['authorizenet_license'] );
-
-			// data to send in our API request
-			$api_params = array(
-				'edd_action' => 'activate_license',
-				'license'    => $license,
-				'item_name'  => urlencode( 'authorize-net' ), // the name of our product in EDD
-				'url'        => home_url()
-			);
-
-			// Call the custom API.
-			$response = wp_remote_post( 'https://exchangewp.com', array( 'timeout' => 15, 'sslverify' => false, 'body' => $api_params ) );
-
-			// make sure the response came back okay
-			if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-
-				if ( is_wp_error( $response ) ) {
-					$message = $response->get_error_message();
-				} else {
-					$message = __( 'An error occurred, please try again.' );
-				}
-
-			} else {
-
-				$license_data = json_decode( wp_remote_retrieve_body( $response ) );
-
-				if ( false === $license_data->success ) {
-
-					switch( $license_data->error ) {
-
-						case 'expired' :
-
-							$message = sprintf(
-								__( 'Your license key expired on %s.' ),
-								date_i18n( get_option( 'date_format' ), strtotime( $license_data->expires, current_time( 'timestamp' ) ) )
-							);
-							break;
-
-						case 'revoked' :
-
-							$message = __( 'Your license key has been disabled.' );
-							break;
-
-						case 'missing' :
-
-							$message = __( 'Invalid license.' );
-							break;
-
-						case 'invalid' :
-						case 'site_inactive' :
-
-							$message = __( 'Your license is not active for this URL.' );
-							break;
-
-						case 'item_name_mismatch' :
-
-							$message = sprintf( __( 'This appears to be an invalid license key for %s.' ), 'authorizenet' );
-							break;
-
-						case 'no_activations_left':
-
-							$message = __( 'Your license key has reached its activation limit.' );
-							break;
-
-						default :
-
-							$message = __( 'An error occurred, please try again.' );
-							break;
-					}
-
-				}
-
-			}
-
-			// Check if anything passed on a message constituting a failure
-			if ( ! empty( $message ) ) {
-				$base_url = admin_url( 'admin.php?page=' . 'authorizenet-license' );
-				$redirect = add_query_arg( array( 'sl_activation' => 'false', 'message' => urlencode( $message ) ), $base_url );
-
-				wp_redirect( $redirect );
-				exit();
-			}
-
-			//$license_data->license will be either "valid" or "invalid"
-			update_option( 'exchange_authorizenet_license_status', $license_data->license );
-			// wp_redirect( admin_url( 'admin.php?page=' . 'authorizenet-license' ) );
-			exit();
-		}
-
-		// deactivate here
-		// listen for our activate button to be clicked
-		if( isset( $_POST['exchange_authorizenet_license_deactivate'] ) ) {
-
-			// run a quick security check
-			if( ! check_admin_referer( 'exchange_authorizenet_nonce', 'exchange_authorizenet_nonce' ) )
-				return; // get out if we didn't click the Activate button
-
-			// retrieve the license from the database
-			// $license = trim( get_option( 'exchange_authorizenet_license_key' ) );
-
-			$exchangewp_authorizenet_options = get_option( 'it-storage-exchange_addon_authorizenet' );
-			$license = $exchangewp_authorizenet_options['authorizenet_license'];
-
-
-			// data to send in our API request
-			$api_params = array(
-				'edd_action' => 'deactivate_license',
-				'license'    => $license,
-				'item_name'  => urlencode( 'authorizenet' ), // the name of our product in EDD
-				'url'        => home_url()
-			);
-			// Call the custom API.
-			$response = wp_remote_post( 'https://exchangewp.com', array( 'timeout' => 15, 'sslverify' => false, 'body' => $api_params ) );
-
-			// make sure the response came back okay
-			if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {
-
-				if ( is_wp_error( $response ) ) {
-					$message = $response->get_error_message();
-				} else {
-					$message = __( 'An error occurred, please try again.' );
-				}
-
-				// $base_url = admin_url( 'admin.php?page=' . 'authorizenet-license' );
-				// $redirect = add_query_arg( array( 'sl_activation' => 'false', 'message' => urlencode( $message ) ), $base_url );
-
-				wp_redirect( 'admin.php?page=authorizenet-license' );
-				exit();
-			}
-
-			// decode the license data
-			$license_data = json_decode( wp_remote_retrieve_body( $response ) );
-			// $license_data->license will be either "deactivated" or "failed"
-			if( $license_data->license == 'deactivated' ) {
-				delete_option( 'exchange_authorizenet_license_status' );
-			}
-
-			// wp_redirect( admin_url( 'admin.php?page=' . 'authorizenet-license' ) );
-			exit();
-
 		}
 
 	}
