@@ -156,6 +156,8 @@ class IT_Exchange_AuthorizeNet_Add_On {
 		add_action( 'admin_init', array( $this, 'exchange_authorizenet_register_option' ) );
 		add_action( 'admin_notices', array( $this, 'exchange_authorizenet_admin_notices' ) );
 
+	}
+
 	/**
 	 * Prints settings page
 	 *
