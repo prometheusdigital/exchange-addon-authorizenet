@@ -84,9 +84,6 @@ function ithemes_exchange_authorizenet_deactivate() {
 }
 register_deactivation_hook( __FILE__, 'ithemes_exchange_authorizenet_deactivate' );
 
-if ( ! class_exists( 'EDD_SL_Plugin_Updater' ) )  {
-	require_once 'EDD_SL_Plugin_Updater.php';
-}
 
 function exchange_authorizenet_plugin_updater() {
 
