@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name: ExchangeWP - Authorize.Net Add-on
- * Version: 1.4.5
+ * Version: 1.4.3
  * Description: Adds the ability for users to checkout with Authorize.Net.
  * Plugin URI: https://exchangewp.com/downloads/authorize-net/
  * Author: ExchangeWP
@@ -84,28 +84,27 @@ function ithemes_exchange_authorizenet_deactivate() {
 }
 register_deactivation_hook( __FILE__, 'ithemes_exchange_authorizenet_deactivate' );
 
-
 function exchange_authorizenet_plugin_updater() {
+	$license_check = get_transient( 'exchange_license_check' );
 
-	// retrieve our license key from the DB
-	// this is going to have to be pulled from a seralized array to get the actual key.
-	// $license_key = trim( get_option( 'exchange_2checkout_license_key' ) );
-	$exchangewp_2checkout_options = get_option( 'it-storage-exchange_addon_authorizenet' );
-	$license_key = $exchangewp_2checkout_options['authorizenet_license'];
+	if ($license_check->license == 'valid' ) {
 
-	// setup the updater
-	$edd_updater = new EDD_SL_Plugin_Updater( 'https://exchangewp.com', __FILE__, array(
-			'version' 		=> '1.4.5', 				// current version number
-			'license' 		=> $license_key, 		// license key (used get_option above to retrieve from DB)
-			'item_name' 	=> 'authorize-net', 	  // name of this plugin
-			'author' 	  	=> 'ExchangeWP',    // author of this plugin
-			'url'       	=> home_url(),
-			'wp_override' => true,
-			'beta'		  	=> false
-		)
-	);
-	// var_dump($edd_updater);
-	// die();
+		$license_key = it_exchange_get_option( 'exchange_licenses' );
+		$license = $license_key['exchange_license'];
+
+		// setup the updater
+		$edd_updater = new EDD_SL_Plugin_Updater( 'https://exchangewp.com', __FILE__, array(
+				'version' 		=> '1.4.3', 				// current version number
+				'license' 		=> $license, 		// license key (used get_option above to retrieve from DB)
+				'item_name' 	=> 'authorize-net', 	  // name of this plugin
+				'author' 	  	=> 'ExchangeWP',    // author of this plugin
+				'url'       	=> home_url(),
+				'wp_override' => true,
+				'beta'		  	=> false
+			)
+		);
+	}
+
 
 }
 
