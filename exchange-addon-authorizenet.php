@@ -71,11 +71,11 @@ function ithemes_exchange_authorizenet_deactivate() {
 register_deactivation_hook( __FILE__, 'ithemes_exchange_authorizenet_deactivate' );
 
 /**
- * Registers Plugin with iThemes updater class
+ * Registers Plugin with ExchangeWP updater class
  *
  * @since 1.0.0
  *
- * @param object $updater ithemes updater object
+ * @param object $updater exchangewp updater object
  * @return void
 */
 function exchange_authorizenet_plugin_updater() {
