@@ -1,3 +1,0 @@
-[submodule "lib/updater"]
-	path = lib/updater
-	url = git@bitbucket.org:ithemes/updater
