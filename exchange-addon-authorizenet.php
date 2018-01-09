@@ -1,7 +1,7 @@
 <?php
 /*
  * Plugin Name: ExchangeWP - Authorize.Net Add-on
- * Version: 1.4.4
+ * Version: 0.0.1
  * Description: Adds the ability for users to checkout with Authorize.Net.
  * Plugin URI: https://exchangewp.com/downloads/authorize-net/
  * Author: ExchangeWP
@@ -55,19 +55,6 @@ function it_exchange_authorizenet_set_textdomain() {
 }
 add_action( 'plugins_loaded', 'it_exchange_authorizenet_set_textdomain' );
 
-/**
- * Registers Plugin with iThemes updater class
- *
- * @since 1.0.0
- *
- * @param object $updater ithemes updater object
- * @return void
-*/
-function ithemes_exchange_addon_authorizenet_updater_register( $updater ) {
-	$updater->register( 'exchange-addon-authorizenet', __FILE__ );
-}
-add_action( 'ithemes_updater_register', 'ithemes_exchange_addon_authorizenet_updater_register' );
-
 function ithemes_exchange_authorizenet_deactivate() {
 	if ( empty( $_GET['remove-gateway'] ) || 'yes' !== $_GET['remove-gateway'] ) {
 		$title = __( 'Payment Gateway Warning', 'LION' );
@@ -83,6 +70,14 @@ function ithemes_exchange_authorizenet_deactivate() {
 }
 register_deactivation_hook( __FILE__, 'ithemes_exchange_authorizenet_deactivate' );
 
+/**
+ * Registers Plugin with iThemes updater class
+ *
+ * @since 1.0.0
+ *
+ * @param object $updater ithemes updater object
+ * @return void
+*/
 function exchange_authorizenet_plugin_updater() {
 
 	$license_check = get_transient( 'exchangewp_license_check' );
@@ -94,9 +89,9 @@ function exchange_authorizenet_plugin_updater() {
 
 		// setup the updater
 		$edd_updater = new EDD_SL_Plugin_Updater( 'https://exchangewp.com', __FILE__, array(
-				'version' 		=> '1.4.4', 						// current version number
+				'version' 		=> '0.0.1', 						// current version number
 				'license' 		=> $license, 						// license key (used get_option above to retrieve from DB)
-				'item_name' 	=> 'authorize-net', 	  // name of this plugin
+				'item_id'		 	=> 317,							 	  // name of this plugin
 				'author' 	  	=> 'ExchangeWP',    		// author of this plugin
 				'url'       	=> home_url(),
 				'wp_override' => true,
